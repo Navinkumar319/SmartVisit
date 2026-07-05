@@ -92,7 +92,13 @@ public class VisitorController {
     @PostMapping("/approve")
     public ResponseEntity<?> approveVisitor(@RequestBody ApprovalRequest request) {
         try {
-            Visitor visitor = visitorService.approveVisitor(request.getVisitorId(), getCurrentUsername(), request.getRemarks());
+            Visitor visitor = visitorService.approveVisitor(
+                request.getVisitorId(), 
+                getCurrentUsername(), 
+                request.getRemarks(),
+                request.getVisitDate(),
+                request.getVisitTime()
+            );
             return ResponseEntity.ok(new ApiResponse(true, "Visitor " + visitor.getVisitorCode() + " approved successfully!"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));

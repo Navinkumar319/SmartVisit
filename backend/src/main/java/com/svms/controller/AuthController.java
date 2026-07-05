@@ -11,6 +11,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -56,4 +57,36 @@ public class AuthController {
         }
     }
 
+    // 2. Get Current User Details
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        Object principal = authentication.getPrincipal();
+        String username = null;
+        if (principal instanceof UserDetails) {
+            username = ((UserDetails) principal).getUsername();
+        } else if (principal instanceof String) {
+            username = (String) principal;
+        }
+        
+        if (username == null || "anonymousUser".equals(username)) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+
+        return userService.getUserByUsername(username)
+                .<ResponseEntity<?>>map(user -> ResponseEntity.ok(new java.util.HashMap<String, Object>() {{
+                    put("id", user.getUserId());
+                    put("username", user.getUsername());
+                    put("fullName", user.getFullName());
+                    put("email", user.getEmail());
+                    put("mobile", user.getMobile());
+                    put("role", user.getRole());
+                    put("profilePhoto", user.getProfilePhoto());
+                }}))
+                .orElse(ResponseEntity.notFound().build());
+    }
 }

@@ -1,9 +1,13 @@
 package com.svms.dto;
 
+import java.time.LocalDate;
+
 public class ApprovalRequest {
     private Integer visitorId;
     private String status; // APPROVED, REJECTED
     private String remarks;
+    private LocalDate visitDate;
+    private String visitTime;
 
     // Constructors
     public ApprovalRequest() {}
@@ -31,5 +35,21 @@ public class ApprovalRequest {
 
     public void setRemarks(String remarks) {
         this.remarks = remarks;
+    }
+
+    public LocalDate getVisitDate() {
+        return visitDate;
+    }
+
+    public void setVisitDate(LocalDate visitDate) {
+        this.visitDate = visitDate;
+    }
+
+    public String getVisitTime() {
+        return visitTime;
+    }
+
+    public void setVisitTime(String visitTime) {
+        this.visitTime = visitTime;
     }
 }

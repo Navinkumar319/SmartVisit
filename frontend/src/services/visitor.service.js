@@ -44,8 +44,13 @@ const VisitorService = {
   },
 
   // Approve visitor (Admin/Reception)
-  approveVisitor: async (visitorId, remarks) => {
-    const response = await api.post('/api/visitors/approve', { visitorId, remarks });
+  approveVisitor: async (visitorId, remarks, visitDate, visitTime) => {
+    const response = await api.post('/api/visitors/approve', { 
+      visitorId, 
+      remarks, 
+      visitDate: visitDate || null, 
+      visitTime: visitTime || null 
+    });
     return response.data;
   },
 

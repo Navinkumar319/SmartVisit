@@ -66,4 +66,24 @@ public class UserCreationRequest {
     public void setPassword(String password) {
         this.password = password;
     }
+
+    private Boolean bypassOtp = false;
+
+    public Boolean getBypassOtp() {
+        return bypassOtp;
+    }
+
+    public void setBypassOtp(Boolean bypassOtp) {
+        this.bypassOtp = bypassOtp;
+    }
+
+    private String profilePhoto;
+
+    public String getProfilePhoto() {
+        return profilePhoto;
+    }
+
+    public void setProfilePhoto(String profilePhoto) {
+        this.profilePhoto = profilePhoto;
+    }
 }

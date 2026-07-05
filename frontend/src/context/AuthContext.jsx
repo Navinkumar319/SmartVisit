@@ -7,17 +7,46 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Helper to fetch and sync fresh profile data from database
+  const refreshProfile = async () => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      try {
+        const response = await api.get('/api/auth/me');
+        const data = response.data;
+        setUser({
+          token,
+          role: data.role,
+          username: data.username,
+          fullName: data.fullName,
+          email: data.email,
+          mobile: data.mobile,
+          profilePhoto: data.profilePhoto
+        });
+      } catch (err) {
+        console.error('Failed to refresh user profile from database:', err);
+        // Fallback to local storage parameters
+        const role = localStorage.getItem('role');
+        const username = localStorage.getItem('username');
+        const fullName = localStorage.getItem('fullName');
+        if (role && username && fullName) {
+          setUser({ token, role, username, fullName });
+        }
+      }
+    }
+  };
+
   // Initialize session from local storage on startup
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
-    const username = localStorage.getItem('username');
-    const fullName = localStorage.getItem('fullName');
-
-    if (token && role && username && fullName) {
-      setUser({ token, role, username, fullName });
-    }
-    setLoading(false);
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        await refreshProfile();
+      }
+      setLoading(false);
+    };
+    initializeAuth();
   }, []);
 
   // Login action
@@ -31,11 +60,28 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('username', data.username);
       localStorage.setItem('fullName', data.fullName);
 
+      api.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
+      
+      let email = '';
+      let mobile = '';
+      let profilePhoto = '';
+      try {
+        const meRes = await api.get('/api/auth/me');
+        email = meRes.data.email;
+        mobile = meRes.data.mobile;
+        profilePhoto = meRes.data.profilePhoto;
+      } catch (meErr) {
+        console.error('Failed to get fresh credentials on login:', meErr);
+      }
+
       setUser({
         token: data.accessToken,
         role: data.role,
         username: data.username,
-        fullName: data.fullName
+        fullName: data.fullName,
+        email,
+        mobile,
+        profilePhoto
       });
 
       return { success: true, role: data.role };
@@ -66,7 +112,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, signup, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, signup, refreshProfile, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   );

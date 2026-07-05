@@ -17,7 +17,7 @@ public class Settings {
     private String companyLogo; // Base64 logo string
 
     @Column(name = "visitor_id_format", nullable = false, length = 20)
-    private String visitorIdFormat; // E.g., "VIS-"
+    private String visitorIdFormat; // E.g., "vis-"
 
     @Column(name = "email_notification", nullable = false)
     private Boolean emailNotification;
@@ -29,7 +29,7 @@ public class Settings {
     public Settings() {
         this.id = 1;
         this.companyName = "Smart Visitor Management System";
-        this.visitorIdFormat = "VIS-";
+        this.visitorIdFormat = "vis-";
         this.emailNotification = true;
         this.smsNotification = false;
     }

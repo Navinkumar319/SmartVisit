@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
-import SecondNavbar from '../components/SecondNavbar';
 import SystemService from '../services/system.service';
 
 const MainLayout = ({ children }) => {
@@ -9,6 +8,8 @@ const MainLayout = ({ children }) => {
     companyLogo: '',
   });
 
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   // Load settings on mount to display customized company name/logo in header
   useEffect(() => {
     const fetchSettings = async () => {
@@ -16,8 +17,8 @@ const MainLayout = ({ children }) => {
         const data = await SystemService.getSettings();
         if (data) {
           setSettings({
-            companyName: data.companyName,
-            companyLogo: data.companyLogo,
+            companyName: data.companyName || 'Smart Visitor Management System',
+            companyLogo: data.companyLogo || '',
           });
         }
       } catch (error) {
@@ -28,17 +29,19 @@ const MainLayout = ({ children }) => {
   }, []);
 
   return (
-    <div className="layout-root">
-      <Header companyName={settings.companyName} companyLogo={settings.companyLogo} />
-      <SecondNavbar />
-      <main className="main-content">
-        <div className="content-card">
+    <div className="layout-container-modern">
+      <div className="main-viewport-modern">
+        <Header 
+          companyName={settings.companyName} 
+          companyLogo={settings.companyLogo} 
+          isMobileOpen={isMobileMenuOpen}
+          setIsMobileOpen={setIsMobileMenuOpen}
+        />
+        <main className="main-content-area-modern">
           {children}
-        </div>
-      </main>
-      <footer className="footer">
-        <p>&copy; {new Date().getFullYear()} {settings.companyName}. All rights reserved.</p>
-      </footer>
+        </main>
+
+      </div>
     </div>
   );
 };

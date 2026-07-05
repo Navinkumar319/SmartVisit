@@ -68,4 +68,14 @@ public class SignupRequest {
     public void setRole(String role) {
         this.role = role;
     }
+
+    private String profilePhoto;
+
+    public String getProfilePhoto() {
+        return profilePhoto;
+    }
+
+    public void setProfilePhoto(String profilePhoto) {
+        this.profilePhoto = profilePhoto;
+    }
 }

@@ -1,0 +1,26 @@
+# Maven build outputs and packages
+**/target/
+**/apache-maven-*/
+
+# Node/npm dependency and build outputs
+**/node_modules/
+**/dist/
+**/dist-ssr/
+*.local
+
+# IDE configuration
+.vscode/
+.idea/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS specific files
+.DS_Store
+Thumbs.db

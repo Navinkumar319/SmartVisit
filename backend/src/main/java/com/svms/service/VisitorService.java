@@ -35,14 +35,20 @@ public class VisitorService {
         Settings settings = settingsRepository.findById(1).orElse(new Settings());
         String prefix = settings.getVisitorIdFormat(); // Default: "VIS-"
         
+        LocalDate today = LocalDate.now();
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("ddMMyyyy");
+        String dateStr = today.format(formatter);
+        
+        String currentDayPrefix = prefix + dateStr + "-";
+        
         Optional<Visitor> lastVisitor = visitorRepository.findTopByOrderByVisitorIdDesc();
         int nextNum = 1;
 
         if (lastVisitor.isPresent()) {
             String lastCode = lastVisitor.get().getVisitorCode();
-            if (lastCode.startsWith(prefix)) {
+            if (lastCode.startsWith(currentDayPrefix)) {
                 try {
-                    String numPart = lastCode.substring(prefix.length());
+                    String numPart = lastCode.substring(currentDayPrefix.length());
                     nextNum = Integer.parseInt(numPart) + 1;
                 } catch (NumberFormatException e) {
                     // fallback if last code was modified manually
@@ -50,14 +56,16 @@ public class VisitorService {
                 }
             }
         }
-        return prefix + nextNum;
+        return currentDayPrefix + nextNum;
     }
 
     // 2. Register a New Visitor
     public Visitor registerVisitor(Visitor visitor, String username) {
         visitor.setVisitorCode(generateNextVisitorCode());
         visitor.setStatus("PENDING");
-        visitor.setCreatedBy(username);
+        if (visitor.getCreatedBy() == null || visitor.getCreatedBy().trim().isEmpty()) {
+            visitor.setCreatedBy(username);
+        }
         visitor.setCreatedAt(LocalDateTime.now());
         return visitorRepository.save(visitor);
     }
@@ -75,7 +83,6 @@ public class VisitorService {
         visitor.setPersonToMeet(details.getPersonToMeet());
         visitor.setDepartment(details.getDepartment());
         visitor.setVisitDate(details.getVisitDate());
-        visitor.setExpectedTime(details.getExpectedTime());
         visitor.setIdProofType(details.getIdProofType());
         visitor.setIdNumber(details.getIdNumber());
         visitor.setPhoto(details.getPhoto());
@@ -92,11 +99,17 @@ public class VisitorService {
 
     // 5. Approve Visitor (Admin/Reception)
     @Transactional
-    public Visitor approveVisitor(Integer id, String username, String remarks) {
+    public Visitor approveVisitor(Integer id, String username, String remarks, LocalDate visitDate, String visitTime) {
         Visitor visitor = visitorRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Visitor not found with id: " + id));
         
         visitor.setStatus("APPROVED");
+        if (visitDate != null) {
+            visitor.setVisitDate(visitDate);
+        }
+        if (visitTime != null) {
+            visitor.setVisitTime(visitTime);
+        }
         visitorRepository.save(visitor);
 
         return visitor;
@@ -124,6 +137,23 @@ public class VisitorService {
             throw new IllegalStateException("Visitor must be APPROVED before checking in!");
         }
 
+        if (visitor.getVisitDate() != null) {
+            LocalDateTime scheduled = visitor.getVisitDate().atStartOfDay();
+            if (visitor.getVisitTime() != null && !visitor.getVisitTime().trim().isEmpty()) {
+                try {
+                    String[] timeParts = visitor.getVisitTime().split(":");
+                    int hours = Integer.parseInt(timeParts[0]);
+                    int minutes = Integer.parseInt(timeParts[1]);
+                    scheduled = visitor.getVisitDate().atTime(hours, minutes);
+                } catch (Exception e) {
+                    // Ignore parsing error
+                }
+            }
+            if (LocalDateTime.now().isBefore(scheduled)) {
+                throw new IllegalStateException("Visitor's scheduled visit date and time has not been reached yet.");
+            }
+        }
+
         visitor.setStatus("CHECKED_IN");
         Visitor saved = visitorRepository.save(visitor);
 
@@ -132,19 +162,29 @@ public class VisitorService {
 
         populateCheckTimes(saved);
 
-        java.util.concurrent.CompletableFuture.runAsync(() -> {
-            try {
-                emailService.sendCheckInEmail(
-                    saved.getEmail(),
-                    saved.getName(),
-                    saved.getVisitorCode(),
-                    saved.getCheckinTime(),
-                    securityName
-                );
-            } catch (Exception e) {
-                System.err.println(">>> Failed to send visitor check-in email asynchronously: " + e.getMessage());
-            }
-        });
+        Settings settings = settingsRepository.findById(1).orElse(new Settings());
+        boolean sendEmail = settings.getEmailNotification() != null && settings.getEmailNotification();
+        boolean sendSms = settings.getSmsNotification() != null && settings.getSmsNotification();
+
+        if (sendEmail) {
+            java.util.concurrent.CompletableFuture.runAsync(() -> {
+                try {
+                    emailService.sendCheckInEmail(
+                        saved.getEmail(),
+                        saved.getName(),
+                        saved.getVisitorCode(),
+                        saved.getCheckinTime(),
+                        securityName
+                    );
+                } catch (Exception e) {
+                    System.err.println(">>> Failed to send visitor check-in email asynchronously: " + e.getMessage());
+                }
+            });
+        }
+
+        if (sendSms) {
+            System.out.println(">>> [SMS GATEWAY] Dispatched check-in Entry Pass link to mobile " + saved.getMobile() + " for visitor " + saved.getName());
+        }
 
         return saved;
     }
@@ -167,18 +207,28 @@ public class VisitorService {
 
         populateCheckTimes(saved);
 
-        java.util.concurrent.CompletableFuture.runAsync(() -> {
-            try {
-                emailService.sendCheckOutEmail(
-                    saved.getEmail(),
-                    saved.getName(),
-                    saved.getVisitorCode(),
-                    saved.getCheckoutTime()
-                );
-            } catch (Exception e) {
-                System.err.println(">>> Failed to send visitor check-out email asynchronously: " + e.getMessage());
-            }
-        });
+        Settings settings = settingsRepository.findById(1).orElse(new Settings());
+        boolean sendEmail = settings.getEmailNotification() != null && settings.getEmailNotification();
+        boolean sendSms = settings.getSmsNotification() != null && settings.getSmsNotification();
+
+        if (sendEmail) {
+            java.util.concurrent.CompletableFuture.runAsync(() -> {
+                try {
+                    emailService.sendCheckOutEmail(
+                        saved.getEmail(),
+                        saved.getName(),
+                        saved.getVisitorCode(),
+                        saved.getCheckoutTime()
+                    );
+                } catch (Exception e) {
+                    System.err.println(">>> Failed to send visitor check-out email asynchronously: " + e.getMessage());
+                }
+            });
+        }
+
+        if (sendSms) {
+            System.out.println(">>> [SMS GATEWAY] Dispatched check-out confirmation link to mobile " + saved.getMobile() + " for visitor " + saved.getName());
+        }
 
         return saved;
     }

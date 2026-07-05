@@ -62,6 +62,7 @@ public class UserService {
         user.setMobile(request.getMobile());
         user.setUsername(request.getUsername());
         user.setRole(request.getRole());
+        user.setProfilePhoto(request.getProfilePhoto());
 
         // Update password if provided
         if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
@@ -155,6 +156,7 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(rawPassword));
         user.setPlainPassword(rawPassword);
         user.setRole(request.getRole().trim());
+        user.setProfilePhoto(request.getProfilePhoto());
         user.setCreatedAt(LocalDateTime.now());
 
         User savedUser = userRepository.save(user);

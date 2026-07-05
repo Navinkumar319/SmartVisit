@@ -1,7 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import UserService from '../services/user.service';
+import { useAuth } from '../context/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  User, 
+  Mail, 
+  Phone, 
+  UserCheck, 
+  Key, 
+  Eye, 
+  EyeOff, 
+  Edit, 
+  Trash2, 
+  AlertCircle,
+  Copy,
+  Check
+} from 'lucide-react';
 
 const UserManagement = () => {
+  const { user, refreshProfile } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -15,6 +32,14 @@ const UserManagement = () => {
   // Edit Mode States
   const [isEditing, setIsEditing] = useState(false);
   const [editingUserId, setEditingUserId] = useState(null);
+  const [visiblePasswords, setVisiblePasswords] = useState({});
+
+  const togglePasswordVisibility = (userId) => {
+    setVisiblePasswords(prev => ({
+      ...prev,
+      [userId]: !prev[userId]
+    }));
+  };
 
   // Form input fields
   const [formData, setFormData] = useState({
@@ -24,7 +49,27 @@ const UserManagement = () => {
     role: 'ROLE_RECEPTION',
     username: '',
     password: '',
+    profilePhoto: '',
   });
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        setError('Profile photo file size should be less than 2MB.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) => ({
+          ...prev,
+          profilePhoto: reader.result,
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // OTP workflow states
   const [otpCode, setOtpCode] = useState('');
@@ -38,6 +83,8 @@ const UserManagement = () => {
   // Result credentials modal
   const [generatedCredentials, setGeneratedCredentials] = useState(null);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [copiedUsername, setCopiedUsername] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -157,6 +204,7 @@ const UserManagement = () => {
         role: 'ROLE_RECEPTION',
         username: '',
         password: '',
+        profilePhoto: '',
       });
       setOtpCode('');
       setOtpSent(false);
@@ -185,8 +233,9 @@ const UserManagement = () => {
       role: userToEdit.role || 'ROLE_RECEPTION',
       username: userToEdit.username || '',
       password: userToEdit.plainPassword || '',
+      profilePhoto: userToEdit.profilePhoto || '',
     });
-    setOtpVerified(true); // bypass OTP for editing
+    setOtpVerified(true); // bypass OTP for editing existing accounts
     setOtpSent(false);
   };
 
@@ -201,6 +250,7 @@ const UserManagement = () => {
       role: 'ROLE_RECEPTION',
       username: '',
       password: '',
+      profilePhoto: '',
     });
     setOtpVerified(false);
     setOtpSent(false);
@@ -214,8 +264,8 @@ const UserManagement = () => {
       setError('All fields are required.');
       return;
     }
-    if (!formData.username || !formData.password) {
-      setError('Username and Password are required.');
+    if (!formData.username) {
+      setError('Username is required.');
       return;
     }
     setError('');
@@ -225,10 +275,17 @@ const UserManagement = () => {
     try {
       const updatePayload = {
         ...formData,
-        confirmPassword: formData.password // fulfill password verification match on backend
+        confirmPassword: formData.password
       };
       await UserService.updateUser(editingUserId, updatePayload);
       setSuccess(`User account ${formData.username} updated successfully!`);
+      
+      if (user && formData.username === user.username) {
+        if (typeof refreshProfile === 'function') {
+          await refreshProfile();
+        }
+      }
+
       handleCancelEdit();
       fetchUsers();
     } catch (err) {
@@ -272,23 +329,28 @@ const UserManagement = () => {
   return (
     <div className="page-wrapper">
       <div className="page-header-row">
-        <h2>User Management</h2>
-        <p>Admin workspace to manage staff accounts, edit user details, and verify email OTPs</p>
+        <div>
+          <h2>User Account Directory</h2>
+          <p>Create staff credentials, dispatch email OTPs, and control operator system accesses</p>
+        </div>
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
 
-      <div className="manage-users-layout">
-        {/* Left Side: Existing Users */}
-        <div className="users-list-panel">
-          <h3 className="panel-title">Registered Staff Accounts</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '30px' }}>
+        {/* Left Panel: Registered Users */}
+        <div className="content-card">
+          <h3 className="section-title-alt" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <User size={18} /> Registered Operator Accounts
+          </h3>
+          
           {loading ? (
-            <div style={{ padding: '20px 0' }}>Loading accounts...</div>
+            <div style={{ padding: '20px 0', color: 'var(--text-muted)' }}>Loading accounts...</div>
           ) : users.length === 0 ? (
-            <div className="card-empty-state">No users registered in the system.</div>
+            <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0' }}>No users registered.</div>
           ) : (
-            <div className="table-responsive">
+            <div className="table-responsive" style={{ border: 'none' }}>
               <table className="table">
                 <thead>
                   <tr>
@@ -302,28 +364,50 @@ const UserManagement = () => {
                 <tbody>
                   {users.map((u) => (
                     <tr key={u.userId}>
-                      <td className="font-bold">{u.fullName}</td>
+                      <td className="font-bold">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ width: '28px', height: '28px', borderRadius: '50%', overflow: 'hidden', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-soft)', flexShrink: 0 }}>
+                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--primary)' }}>
+                              {u.fullName ? u.fullName.charAt(0).toUpperCase() : 'U'}
+                            </span>
+                          </div>
+                          <span>{u.fullName}</span>
+                        </div>
+                      </td>
                       <td>{u.username}</td>
                       <td>
-                        {u.username === 'admin' ? (
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>admin123 (Seeded)</span>
-                        ) : (
-                          u.plainPassword || <span style={{ fontStyle: 'italic', fontSize: '11px', color: 'var(--text-muted)' }}>Hashed</span>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '13px' }}>
+                            {visiblePasswords[u.userId] 
+                              ? (u.username === 'admin' && !u.plainPassword ? 'admin123' : u.plainPassword || 'Hashed')
+                              : '••••••••'
+                            }
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => togglePasswordVisibility(u.userId)}
+                            style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: 'var(--text-light)', display: 'flex', alignItems: 'center' }}
+                            title={visiblePasswords[u.userId] ? "Hide Password" : "Show Password"}
+                          >
+                            {visiblePasswords[u.userId] ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                        </div>
                       </td>
                       <td>
-                        <span className={`badge ${u.role === 'ROLE_ADMIN' ? 'badge-primary' : (u.role === 'ROLE_SECURITY' ? 'badge-dark' : 'badge-info')}`}>
+                        <span className={`badge ${
+                          u.role === 'ROLE_ADMIN' ? 'badge-primary' : (u.role === 'ROLE_SECURITY' ? 'badge-dark' : 'badge-info')
+                        }`}>
                           {formatRole(u.role)}
                         </span>
                       </td>
                       <td>
-                        <div className="action-buttons-flex">
+                        <div className="action-buttons-group">
                           <button
                             onClick={() => handleEditUser(u)}
-                            className="btn-action btn-action-edit"
+                            className="btn-action"
                             title="Edit User details"
                           >
-                            Edit
+                            <Edit size={13} /> Edit
                           </button>
                           {u.username !== 'admin' ? (
                             <button
@@ -331,10 +415,10 @@ const UserManagement = () => {
                               className="btn-action btn-action-delete"
                               title="Delete Account"
                             >
-                              Delete
+                              <Trash2 size={13} /> Delete
                             </button>
                           ) : (
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', alignSelf: 'center', marginLeft: '4px' }}>Default</span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', alignSelf: 'center', padding: '0 8px' }}>System</span>
                           )}
                         </div>
                       </td>
@@ -346,12 +430,17 @@ const UserManagement = () => {
           )}
         </div>
 
-        {/* Right Side: Secure User Creation / Editing Form */}
-        <div className="user-form-panel">
-          <h3 className="panel-title">{isEditing ? 'Edit User Details' : 'OTP-Based User Registration'}</h3>
-          <div className="user-crud-form" style={{ marginTop: '16px' }}>
+        {/* Right Panel: Creation / Editing Form */}
+        <div className="content-card">
+          <h3 className="section-title-alt" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Key size={18} /> {isEditing ? 'Edit User Details' : 'Email OTP-Based Registration'}
+          </h3>
+          
+          <form onSubmit={isEditing ? handleUpdateUser : handleCreateUser} style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '10px' }}>
             
-            <div className="form-group">
+
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
               <label htmlFor="fullName">Full Name</label>
               <input
                 type="text"
@@ -365,7 +454,7 @@ const UserManagement = () => {
               />
             </div>
 
-            <div className="form-group">
+            <div className="form-group" style={{ marginBottom: 0 }}>
               <label htmlFor="email">Email Address</label>
               <input
                 type="email"
@@ -373,14 +462,13 @@ const UserManagement = () => {
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                disabled={isEditing || otpSent || otpVerified || sendingOtp || verifyingOtp || creatingUser}
+                disabled={(!isEditing && (otpSent || otpVerified)) || sendingOtp || verifyingOtp || creatingUser}
                 placeholder="staff@company.com"
                 required
               />
-              {isEditing && <small className="help-text-block" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Email address cannot be changed while editing.</small>}
             </div>
 
-            <div className="form-group">
+            <div className="form-group" style={{ marginBottom: 0 }}>
               <label htmlFor="mobile">Mobile Number</label>
               <input
                 type="tel"
@@ -394,7 +482,7 @@ const UserManagement = () => {
               />
             </div>
 
-            <div className="form-group">
+            <div className="form-group" style={{ marginBottom: 0 }}>
               <label htmlFor="role">Account Role</label>
               <select
                 id="role"
@@ -404,64 +492,58 @@ const UserManagement = () => {
                 disabled={(!isEditing && otpVerified) || sendingOtp || verifyingOtp || creatingUser}
                 required
               >
+                <option value="ROLE_ADMIN">Administrator</option>
                 <option value="ROLE_RECEPTION">Receptionist</option>
                 <option value="ROLE_SECURITY">Security Officer</option>
               </select>
             </div>
 
-            {/* OTP Sending Button */}
+            {/* Step 1: Send OTP trigger */}
             {!otpVerified && !isEditing && (
-              <div style={{ marginBottom: '20px' }}>
-                <button
-                  type="button"
-                  onClick={handleSendOtp}
-                  disabled={sendingOtp || !formData.email || otpVerified}
-                  className="btn btn-primary btn-block"
-                >
-                  {sendingOtp ? 'Sending OTP...' : (otpSent ? 'Resend Verification OTP' : 'Send OTP')}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleSendOtp}
+                disabled={sendingOtp || !formData.email || otpVerified}
+                className="btn btn-primary"
+                style={{ width: '100%' }}
+              >
+                {sendingOtp ? 'Sending OTP Code...' : (otpSent ? 'Resend Verification OTP' : 'Send OTP Code')}
+              </button>
             )}
 
-            {/* Step 2: OTP Verification Box */}
+            {/* Step 2: OTP Verification Card */}
             {otpSent && !otpVerified && !isEditing && (
-              <div style={{ backgroundColor: 'var(--bg-app)', padding: '16px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', marginBottom: '20px' }}>
+              <div style={{ backgroundColor: 'var(--bg-app)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
                 <div className="form-group" style={{ marginBottom: '12px' }}>
-                  <label htmlFor="otpCode" style={{ color: 'var(--primary)', fontWeight: '600' }}>Enter Verification OTP</label>
+                  <label htmlFor="otpCode" style={{ color: 'var(--primary)', fontWeight: 'bold' }}>Enter Verification OTP</label>
                   <input
                     type="text"
                     id="otpCode"
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="Enter 6-digit OTP"
+                    placeholder="------"
                     maxLength={6}
                     style={{ textAlign: 'center', letterSpacing: '4px', fontSize: '18px', fontWeight: 'bold' }}
                     required
                   />
-                  <small className="help-text-block">An OTP has been dispatched to {formData.email}. It is valid for 5 minutes.</small>
+                  <small className="help-text-block">OTP dispatched to {formData.email}. Valid for 5 minutes.</small>
                 </div>
                 <button
                   type="button"
                   onClick={handleVerifyOtp}
                   disabled={verifyingOtp || otpCode.length !== 6}
-                  className="btn btn-secondary btn-block"
-                  style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary)', border: '1px solid var(--primary)' }}
+                  className="btn btn-secondary"
+                  style={{ width: '100%', border: '1px solid var(--primary)', color: 'var(--primary)', background: 'var(--primary-light)' }}
                 >
-                  {verifyingOtp ? 'Verifying OTP...' : 'Verify OTP'}
+                  {verifyingOtp ? 'Verifying...' : 'Verify OTP'}
                 </button>
               </div>
             )}
 
-             {/* Step 3: Account Creation / Edit Actions (Only shown once verified/editing) */}
+            {/* Step 3: Username & Password Configuration */}
             {(otpVerified || isEditing) && (
-              <div style={{ marginTop: '20px' }}>
-                {!isEditing && (
-                  <div className="alert alert-success" style={{ padding: '8px 12px', fontSize: '12.5px', marginBottom: '16px', textAlign: 'center' }}>
-                    Email verified successfully. Please review and customize the login credentials below:
-                  </div>
-                )}
-
-                <div className="form-group" style={{ marginBottom: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '1.5px dashed var(--border-soft)', paddingTop: '20px' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
                   <label htmlFor="username">Username</label>
                   <input
                     type="text"
@@ -475,7 +557,7 @@ const UserManagement = () => {
                   />
                 </div>
 
-                <div className="form-group" style={{ marginBottom: '16px' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
                   <label htmlFor="password">Password</label>
                   <div style={{ position: 'relative' }}>
                     <input
@@ -486,139 +568,142 @@ const UserManagement = () => {
                       onChange={handleInputChange}
                       placeholder="Enter Password"
                       disabled={creatingUser}
-                      required
-                      style={{ paddingRight: '60px' }}
+                      required={!isEditing}
+                      style={{ paddingRight: '50px' }}
                     />
                     <button
                       type="button"
                       onClick={() => setShowFormPassword(!showFormPassword)}
                       style={{
                         position: 'absolute',
-                        right: '10px',
+                        right: '12px',
                         top: '50%',
                         transform: 'translateY(-50%)',
                         background: 'none',
                         border: 'none',
-                        color: 'var(--text-muted)',
                         cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: '600'
+                        color: 'var(--text-muted)'
                       }}
                     >
-                      {showFormPassword ? 'Hide' : 'Show'}
+                      {showFormPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
-                  <small className="help-text-block" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                    Must be at least 8 characters with 1 uppercase, 1 lowercase, 1 digit, and 1 special char.
-                  </small>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div className="form-actions-row">
+                  <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={creatingUser}>
+                    {isEditing ? 'Save Updates' : 'Register Operator'}
+                  </button>
                   {isEditing && (
-                    <button
-                      type="button"
-                      onClick={handleCancelEdit}
-                      className="btn btn-secondary"
-                      style={{ flex: 1 }}
-                    >
+                    <button type="button" onClick={handleCancelEdit} className="btn btn-secondary" disabled={creatingUser}>
                       Cancel
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={isEditing ? handleUpdateUser : handleCreateUser}
-                    disabled={creatingUser}
-                    className="btn btn-primary"
-                    style={{ flex: 2, backgroundColor: isEditing ? 'var(--primary)' : 'var(--success)', border: 'none' }}
-                  >
-                    {creatingUser 
-                      ? (isEditing ? 'Updating Details...' : 'Creating Account...') 
-                      : (isEditing ? 'Update User Details' : 'Create User')}
-                  </button>
                 </div>
               </div>
             )}
-          </div>
+          </form>
         </div>
       </div>
 
-      {/* Credentials Modal (Generated Credentials displayed exactly once) */}
-      {showCredentialsModal && generatedCredentials && (
-        <div className="otp-modal-overlay" style={{ display: 'flex', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 1000, justifyContent: 'center', alignItems: 'center' }}>
-          <div className="otp-modal-card" style={{ backgroundColor: '#fff', padding: '30px', borderRadius: 'var(--radius-lg)', maxWidth: '480px', width: '90%', boxShadow: 'var(--shadow-lg)', textAlign: 'center' }}>
-            <div className="otp-modal-header" style={{ marginBottom: '20px' }}>
-              <div className="otp-modal-icon" style={{ display: 'inline-flex', width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--success-light)', color: 'var(--success)', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
-                <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                </svg>
-              </div>
-              <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-dark)' }}>User Account Registered</h3>
-              <p style={{ fontSize: '13.5px', color: 'var(--text-muted)', marginTop: '8px' }}>
-                The account has been created successfully. Below are the final credentials.
-                <br />
-                <strong style={{ color: 'var(--danger)', display: 'block', marginTop: '6px' }}>Copy and save these credentials now. They will only be shown once!</strong>
-              </p>
-            </div>
-
-            <div style={{ backgroundColor: 'var(--bg-app)', padding: '16px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid var(--border-color)', textAlign: 'left' }}>
-              <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>Account Username</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="text"
-                    readOnly
-                    value={generatedCredentials.username}
-                    style={{ flex: 1, padding: '8px 12px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', fontWeight: 'bold', backgroundColor: '#fff', color: 'var(--text-dark)' }}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      navigator.clipboard.writeText(generatedCredentials.username);
-                      alert('Username copied to clipboard!');
-                    }}
-                    style={{ padding: '8px 12px', fontSize: '11.5px', height: '36px' }}
-                  >
-                    Copy
-                  </button>
-                </div>
-              </div>
-
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>Account Password</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="text"
-                    readOnly
-                    value={generatedCredentials.password}
-                    style={{ flex: 1, padding: '8px 12px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', fontWeight: 'bold', backgroundColor: '#fff', color: 'var(--text-dark)', fontFamily: 'monospace' }}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      navigator.clipboard.writeText(generatedCredentials.password);
-                      alert('Password copied to clipboard!');
-                    }}
-                    style={{ padding: '8px 12px', fontSize: '11.5px', height: '36px' }}
-                  >
-                    Copy
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleCloseCredentialsModal}
-              className="btn btn-primary"
-              style={{ minWidth: '160px' }}
+      {/* Generated Credentials Popup Modal */}
+      <AnimatePresence>
+        {showCredentialsModal && generatedCredentials && (
+          <div className="modal-overlay">
+            <motion.div 
+              className="modal-box"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-color)' }}
             >
-              Okay, Close
-            </button>
+              <div className="modal-header" style={{ borderBottom: '1px solid var(--border-soft)', paddingBottom: '12px' }}>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <UserCheck size={22} style={{ color: 'var(--success)' }} /> Staff Account Registered
+                </h3>
+              </div>
+              <div style={{ padding: '16px 0', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--success-bg)', border: '1px solid rgba(16,185,129,0.2)', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '13px', color: 'var(--text-dark)' }}>
+                  <AlertCircle size={18} style={{ color: 'var(--success)', flexShrink: 0 }} />
+                  Please copy these auto-generated credentials and hand them to the operator safely.
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '12.5px', color: 'var(--text-muted)', fontWeight: '600' }}>Operator Name</span>
+                  <div style={{ padding: '10px 14px', border: '1px solid var(--border-soft)', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.01)', fontWeight: 'bold' }}>
+                    {generatedCredentials.fullName}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '12.5px', color: 'var(--text-muted)', fontWeight: '600' }}>Assigned Username</span>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{ flex: 1, padding: '10px 14px', border: '1px solid var(--border-soft)', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.01)', fontFamily: 'monospace', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                      {generatedCredentials.username}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(generatedCredentials.username);
+                        setCopiedUsername(true);
+                        setTimeout(() => setCopiedUsername(false), 2000);
+                      }}
+                      className="btn btn-secondary"
+                      style={{
+                        padding: '10px 14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        border: '1px solid var(--border-soft)'
+                      }}
+                      title="Copy Username"
+                    >
+                      {copiedUsername ? <Check size={15} style={{ color: 'var(--success)' }} /> : <Copy size={15} />}
+                      <span style={{ fontSize: '12px' }}>{copiedUsername ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '12.5px', color: 'var(--text-muted)', fontWeight: '600' }}>Temporary Password</span>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{ flex: 1, padding: '10px 14px', border: '1px solid var(--border-soft)', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.01)', fontFamily: 'monospace', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                      {generatedCredentials.password}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(generatedCredentials.password);
+                        setCopiedPassword(true);
+                        setTimeout(() => setCopiedPassword(false), 2000);
+                      }}
+                      className="btn btn-secondary"
+                      style={{
+                        padding: '10px 14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        border: '1px solid var(--border-soft)'
+                      }}
+                      title="Copy Password"
+                    >
+                      {copiedPassword ? <Check size={15} style={{ color: 'var(--success)' }} /> : <Copy size={15} />}
+                      <span style={{ fontSize: '12px' }}>{copiedPassword ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer" style={{ borderTop: '1px solid var(--border-soft)', paddingTop: '16px' }}>
+                <button onClick={handleCloseCredentialsModal} className="btn btn-primary">
+                  Acknowledge & Close
+                </button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 };

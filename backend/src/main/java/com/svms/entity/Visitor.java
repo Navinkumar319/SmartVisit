@@ -37,11 +37,12 @@ public class Visitor {
     @Column(nullable = false, length = 100)
     private String department;
 
-    @Column(name = "visit_date", nullable = false)
+    @Column(name = "visit_date", nullable = true)
     private LocalDate visitDate;
 
-    @Column(name = "expected_time", nullable = false, length = 20)
-    private String expectedTime;
+    @Column(name = "visit_time", nullable = true, length = 20)
+    private String visitTime;
+
 
     @Column(name = "id_proof_type", nullable = false, length = 50)
     private String idProofType;
@@ -147,14 +148,14 @@ public class Visitor {
 
     public void setVisitDate(LocalDate visitDate) {
         this.visitDate = visitDate;
+     }
+
+    public String getVisitTime() {
+        return visitTime;
     }
 
-    public String getExpectedTime() {
-        return expectedTime;
-    }
-
-    public void setExpectedTime(String expectedTime) {
-        this.expectedTime = expectedTime;
+    public void setVisitTime(String visitTime) {
+        this.visitTime = visitTime;
     }
 
     public String getIdProofType() {

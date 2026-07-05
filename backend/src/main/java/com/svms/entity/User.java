@@ -123,4 +123,16 @@ public class User {
     public void setPlainPassword(String plainPassword) {
         this.plainPassword = plainPassword;
     }
+
+    @Lob
+    @Column(name = "profile_photo", columnDefinition = "LONGTEXT")
+    private String profilePhoto;
+
+    public String getProfilePhoto() {
+        return profilePhoto;
+    }
+
+    public void setProfilePhoto(String profilePhoto) {
+        this.profilePhoto = profilePhoto;
+    }
 }
