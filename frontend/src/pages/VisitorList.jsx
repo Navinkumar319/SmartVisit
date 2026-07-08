@@ -87,6 +87,8 @@ const VisitorList = () => {
   const [activeNotifications, setActiveNotifications] = useState([]);
   const notifiedVisitorsRef = useRef(new Set());
 
+
+
   useEffect(() => {
     if (visitors.length > 0 && notifiedVisitorsRef.current.size === 0) {
       visitors.forEach((v) => {
@@ -198,13 +200,11 @@ const VisitorList = () => {
         await VisitorService.approveVisitor(visitorId, 'Approved');
         alert('Visitor approved successfully.');
       } else if (action === 'checkin') {
-        const securityName = prompt('Enter Security Officer Name:', user.fullName);
-        if (securityName) {
-          await VisitorService.checkInVisitor(visitorId, securityName, 'Checked In');
-          alert('Visitor checked in successfully.');
-        }
+        const securityName = user.fullName || user.username || 'Security Desk';
+        await VisitorService.checkInVisitor(visitorId, securityName, 'Checked In');
+        alert('Visitor checked in successfully.');
       } else if (action === 'checkout') {
-        await VisitorService.checkOutVisitor(visitorId, 'Checked Out');
+        await VisitorService.checkOutVisitor(visitorId, user.fullName || user.username || 'System', 'Checked Out');
         alert('Visitor checked out successfully.');
       } else if (action === 'reject') {
         await VisitorService.rejectVisitor(visitorId, 'Rejected');
@@ -438,7 +438,9 @@ const VisitorList = () => {
                             setCheckedInVisitorPass({
                               ...v,
                               checkinTime: v.checkinTime || 'N/A',
-                              securityName: 'Security Desk Operations',
+                              securityName: v.checkinBy || 'Security Desk Operations',
+                              checkoutTime: v.checkoutTime || null,
+                              checkoutBy: v.checkoutBy || null,
                               remarks: 'Identity Checked'
                             });
                           }}
@@ -509,16 +511,28 @@ const VisitorList = () => {
                     <span style={{ color: 'var(--text-muted)' }}>Department:</span>
                     <span style={{ color: 'var(--text-dark)' }}>{checkedInVisitorPass.department}</span>
                   </div>
-                  {checkedInVisitorPass.checkinTime && checkedInVisitorPass.checkinTime !== 'N/A' && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Arrival Time:</span>
+                    <span style={{ color: 'var(--text-dark)' }}>
+                      {checkedInVisitorPass.checkinTime && checkedInVisitorPass.checkinTime !== 'N/A'
+                        ? checkedInVisitorPass.checkinTime
+                        : (checkedInVisitorPass.visitTime ? formatTimeHM(checkedInVisitorPass.visitTime) : 'N/A')}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Officer:</span>
+                    <span style={{ color: 'var(--text-dark)' }}>{checkedInVisitorPass.securityName || checkedInVisitorPass.createdBy || 'Security Desk'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Remarks:</span>
+                    <span style={{ color: 'var(--text-dark)' }}>{checkedInVisitorPass.remarks || 'Verified'}</span>
+                  </div>
+                  {checkedInVisitorPass.checkoutTime && checkedInVisitorPass.checkoutTime !== 'N/A' && (
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Check-In Time:</span>
-                      <span style={{ color: 'var(--text-dark)' }}>{checkedInVisitorPass.checkinTime}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>Check-Out Time:</span>
+                      <span style={{ color: 'var(--text-dark)' }}>{checkedInVisitorPass.checkoutTime}</span>
                     </div>
                   )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Verification Officer:</span>
-                    <span style={{ color: 'var(--text-dark)' }}>{checkedInVisitorPass.securityName}</span>
-                  </div>
                 </div>
               </div>
 
@@ -703,6 +717,8 @@ const VisitorList = () => {
           </div>
         )}
       </AnimatePresence>
+
+
 
       {/* Toast Notifications Container */}
       <div style={{ position: 'fixed', top: '85px', right: '24px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '12px', width: '360px', pointerEvents: 'none' }}>

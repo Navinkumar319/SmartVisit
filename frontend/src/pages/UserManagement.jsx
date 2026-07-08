@@ -4,8 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, 
-  Mail, 
-  Phone, 
   UserCheck, 
   Key, 
   Eye, 
@@ -365,14 +363,7 @@ const UserManagement = () => {
                   {users.map((u) => (
                     <tr key={u.userId}>
                       <td className="font-bold">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div style={{ width: '28px', height: '28px', borderRadius: '50%', overflow: 'hidden', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-soft)', flexShrink: 0 }}>
-                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--primary)' }}>
-                              {u.fullName ? u.fullName.charAt(0).toUpperCase() : 'U'}
-                            </span>
-                          </div>
-                          <span>{u.fullName}</span>
-                        </div>
+                        <span>{u.fullName}</span>
                       </td>
                       <td>{u.username}</td>
                       <td>

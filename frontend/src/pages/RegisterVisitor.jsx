@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import VisitorService from '../services/visitor.service';
+import DepartmentService from '../services/department.service';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -10,12 +11,24 @@ import {
   CheckCircle2, 
   ChevronRight, 
   ChevronLeft, 
-  RotateCcw,
-  Sparkles
+  RotateCcw
 } from 'lucide-react';
 
 const RegisterVisitor = () => {
   const { user } = useAuth();
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const list = await DepartmentService.getAllDepartments();
+        setDepartments(list);
+      } catch (err) {
+        console.error('Failed to load departments:', err);
+      }
+    };
+    fetchDepartments();
+  }, []);
   const initialFormState = {
     name: '',
     mobile: '',
@@ -37,11 +50,29 @@ const RegisterVisitor = () => {
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
 
+
+
+  // Receptionist Confirmation Modal State
+  const [showReceptionistModal, setShowReceptionistModal] = useState(false);
+  const [receptionistNameInput, setReceptionistNameInput] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setReceptionistNameInput(user.fullName || user.username || '');
+    }
+  }, [user]);
+
+  // Webcam Capture Specific State & Refs
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isCaptured, setIsCaptured] = useState(false);
+
   const steps = [
-    { id: 1, label: 'Personal Information', icon: User },
-    { id: 2, label: 'Company & Identity', icon: Building2 },
-    { id: 3, label: 'Visit Details', icon: Briefcase },
-    { id: 4, label: 'Photo Upload', icon: Camera },
+    { id: 1, label: 'Visitor Photo', icon: Camera },
+    { id: 2, label: 'Personal Information', icon: User },
+    { id: 3, label: 'Company & Identity', icon: Building2 },
+    { id: 4, label: 'Visit Details', icon: Briefcase },
     { id: 5, label: 'Review & Submit', icon: CheckCircle2 }
   ];
 
@@ -51,6 +82,104 @@ const RegisterVisitor = () => {
       ...prev,
       [name]: value,
     }));
+  };
+  // Webcam lifecycle controls
+  useEffect(() => {
+    if (currentStep === 1) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+    return () => {
+      stopCamera();
+    };
+  }, [currentStep]);
+
+  const startCamera = async () => {
+    setError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { width: 640, height: 480, facingMode: 'user' } 
+      });
+      streamRef.current = stream;
+      setIsCameraActive(true);
+      setIsCaptured(false);
+      
+      // Set stream to video ref with a tiny delay to ensure React has mounted the video element
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(playErr => {
+            console.error('Video play error:', playErr);
+          });
+        }
+      }, 50);
+    } catch (err) {
+      console.error('Camera access error:', err);
+      setError('Could not access webcam. Please check permissions or upload a photo.');
+      setIsCameraActive(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  const capturePhoto = async () => {
+    if (videoRef.current) {
+      setError('');
+      try {
+        const videoWidth = videoRef.current.videoWidth;
+        const videoHeight = videoRef.current.videoHeight;
+        
+        // Capture the center square of the camera stream (unzoomed/uncropped)
+        const size = Math.min(videoWidth, videoHeight);
+        const sourceX = (videoWidth - size) / 2;
+        const sourceY = (videoHeight - size) / 2;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 300;
+        canvas.height = 300;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          setError('Failed to initialize canvas context.');
+          return;
+        }
+        
+        // Mirror image horizontally for intuitive selfie style capture
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        
+        // Draw the full centered square of the video frame
+        ctx.drawImage(videoRef.current, sourceX, sourceY, size, size, 0, 0, 300, 300);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        setFormData((prev) => ({
+          ...prev,
+          photo: dataUrl,
+        }));
+        setPhotoPreview(dataUrl);
+        setIsCaptured(true);
+        stopCamera();
+      } catch (err) {
+        console.error('Photo capture failed:', err);
+        setError('Error capturing photo from camera stream.');
+      }
+    }
+  };
+
+  const retakePhoto = () => {
+    setFormData((prev) => ({
+      ...prev,
+      photo: '',
+    }));
+    setPhotoPreview('');
+    setIsCaptured(false);
+    startCamera();
   };
 
   // Convert uploaded image to Base64 string
@@ -62,41 +191,57 @@ const RegisterVisitor = () => {
         return;
       }
       
+      setError('');
+      
       const reader = new FileReader();
       reader.onloadend = () => {
+        const photoData = reader.result;
         setFormData((prev) => ({
           ...prev,
-          photo: reader.result,
+          photo: photoData,
         }));
-        setPhotoPreview(reader.result);
+        setPhotoPreview(photoData);
+        setIsCaptured(true);
+        stopCamera();
+      };
+      reader.onerror = () => {
+        setError('Failed to process the uploaded photo file.');
       };
       reader.readAsDataURL(file);
     }
   };
 
   const handleReset = () => {
+    stopCamera();
     setFormData(initialFormState);
     setPhotoPreview('');
     setError('');
     setSuccess('');
+    setIsCaptured(false);
     setCurrentStep(1);
   };
 
   const nextStep = () => {
     // Basic validation before going next
     if (currentStep === 1) {
+      if (!formData.photo) {
+        setError('Please capture visitor photo using the webcam or upload a photo to proceed.');
+        return;
+      }
+    }
+    if (currentStep === 2) {
       if (!formData.name || !formData.mobile || !formData.email) {
         setError('Please fill in all mandatory personal details.');
         return;
       }
     }
-    if (currentStep === 2) {
+    if (currentStep === 3) {
       if (!formData.idProofType || !formData.idNumber) {
         setError('Please fill in identity details.');
         return;
       }
     }
-    if (currentStep === 3) {
+    if (currentStep === 4) {
       if (!formData.personToMeet || !formData.department || !formData.purpose) {
         setError('Please fill in meeting details.');
         return;
@@ -112,7 +257,7 @@ const RegisterVisitor = () => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -124,21 +269,23 @@ const RegisterVisitor = () => {
       return;
     }
 
-    const receptionistName = prompt('Enter Receptionist Name:', user ? user.fullName : '');
-    if (receptionistName === null) {
-      return; // cancelled
-    }
-    if (!receptionistName.trim()) {
+    // Trigger receptionist confirmation modal
+    setShowReceptionistModal(true);
+  };
+
+  const handleConfirmRegistration = async () => {
+    if (!receptionistNameInput.trim()) {
       alert('Receptionist Name is required to save visitor.');
       return;
     }
 
+    setShowReceptionistModal(false);
     setLoading(true);
     try {
       const dataToSend = {
         ...formData,
         visitDate: formData.visitDate || null,
-        createdBy: receptionistName.trim(),
+        createdBy: receptionistNameInput.trim(),
       };
       const savedVisitor = await VisitorService.registerVisitor(dataToSend);
       setSuccess(`Visitor registered successfully with ID Code: ${savedVisitor.visitorCode}`);
@@ -164,6 +311,8 @@ const RegisterVisitor = () => {
 
       {error && <div className="alert alert-danger">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
+
+
 
       {/* Steps Progress Tracker */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px', position: 'relative', overflowX: 'auto', padding: '10px 0' }}>
@@ -235,9 +384,101 @@ const RegisterVisitor = () => {
         })}
       </div>
 
-      <form onSubmit={handleSubmit} className="visitor-register-form content-card">
-        {/* Step 1: Personal Details */}
+      <form onSubmit={handleSubmit} noValidate className="visitor-register-form content-card">
+        {/* Step 1: Visitor Photo (Webcam Capture First) */}
         <div style={{ display: currentStep === 1 ? 'block' : 'none' }}>
+          <div className="form-section-title">Visitor Photo Capture</div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '10px 0' }}>
+            
+            {/* Camera Viewport Container */}
+            <div style={{ 
+              position: 'relative', 
+              width: '100%', 
+              maxWidth: '440px', 
+              aspectRatio: '4/3', 
+              borderRadius: 'var(--radius-lg)', 
+              overflow: 'hidden', 
+              background: '#090D16', 
+              border: '2px solid var(--border-color)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: 'var(--shadow-md)'
+            }}>
+              {isCameraActive && !isCaptured && (
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline 
+                  muted
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} 
+                />
+              )}
+              {isCaptured && photoPreview && (
+                <img 
+                  src={photoPreview} 
+                  alt="Captured visitor snapshot" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                />
+              )}
+              {!isCameraActive && !isCaptured && (
+                <div style={{ textAlign: 'center', color: 'var(--text-light)', padding: '20px' }}>
+                  <Camera size={48} style={{ color: 'var(--text-light)', marginBottom: '12px', opacity: 0.6 }} />
+                  <p style={{ fontSize: '13.5px', margin: 0 }}>Camera is currently inactive</p>
+                  <button 
+                    type="button" 
+                    onClick={startCamera} 
+                    className="btn btn-outline" 
+                    style={{ marginTop: '16px', padding: '8px 16px', fontSize: '13px' }}
+                  >
+                    Activate Webcam
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Camera Actions */}
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {isCameraActive && !isCaptured && (
+                <button 
+                  type="button" 
+                  onClick={capturePhoto} 
+                  className="btn btn-primary"
+                  style={{ padding: '10px 20px', fontSize: '13.5px' }}
+                >
+                  <Camera size={16} />
+                  Capture Photo
+                </button>
+              )}
+              {isCaptured && (
+                <button 
+                  type="button" 
+                  onClick={retakePhoto} 
+                  className="btn btn-secondary"
+                  style={{ padding: '10px 20px', fontSize: '13.5px' }}
+                >
+                  <RotateCcw size={16} />
+                  Retake Photo
+                </button>
+              )}
+              {isCameraActive && (
+                <button 
+                  type="button" 
+                  onClick={stopCamera} 
+                  className="btn btn-secondary"
+                  style={{ padding: '10px 20px', fontSize: '13.5px' }}
+                >
+                  Turn Off Camera
+                </button>
+              )}
+            </div>
+
+
+          </div>
+        </div>
+
+        {/* Step 2: Personal Details */}
+        <div style={{ display: currentStep === 2 ? 'block' : 'none' }}>
           <div className="form-section-title">Personal Details</div>
           <div className="form-grid-3">
             <div className="form-group">
@@ -260,7 +501,7 @@ const RegisterVisitor = () => {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="Full name of visitor"
-                required={currentStep === 1}
+                required={currentStep === 2}
               />
             </div>
 
@@ -273,7 +514,7 @@ const RegisterVisitor = () => {
                 value={formData.mobile}
                 onChange={handleChange}
                 placeholder="10-digit mobile number"
-                required={currentStep === 1}
+                required={currentStep === 2}
               />
             </div>
 
@@ -286,14 +527,14 @@ const RegisterVisitor = () => {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="visitor@company.com"
-                required={currentStep === 1}
+                required={currentStep === 2}
               />
             </div>
           </div>
         </div>
 
-        {/* Step 2: Company & Identity Details */}
-        <div style={{ display: currentStep === 2 ? 'block' : 'none' }}>
+        {/* Step 3: Company & Identity Details */}
+        <div style={{ display: currentStep === 3 ? 'block' : 'none' }}>
           <div className="form-section-title">Company & Identity Verification</div>
           <div className="form-grid-3">
             <div className="form-group">
@@ -315,7 +556,7 @@ const RegisterVisitor = () => {
                 name="idProofType"
                 value={formData.idProofType}
                 onChange={handleChange}
-                required={currentStep === 2}
+                required={currentStep === 3}
               >
                 <option value="Aadhaar Card">Aadhaar Card</option>
                 <option value="PAN Card">PAN Card</option>
@@ -335,14 +576,14 @@ const RegisterVisitor = () => {
                 value={formData.idNumber}
                 onChange={handleChange}
                 placeholder="Enter ID card number"
-                required={currentStep === 2}
+                required={currentStep === 3}
               />
             </div>
           </div>
         </div>
 
-        {/* Step 3: Visit details */}
-        <div style={{ display: currentStep === 3 ? 'block' : 'none' }}>
+        {/* Step 4: Visit Details */}
+        <div style={{ display: currentStep === 4 ? 'block' : 'none' }}>
           <div className="form-section-title">Visit Details</div>
           <div className="form-grid-3">
             <div className="form-group">
@@ -354,7 +595,7 @@ const RegisterVisitor = () => {
                 value={formData.personToMeet}
                 onChange={handleChange}
                 placeholder="Host/Employee name"
-                required={currentStep === 3}
+                required={currentStep === 4}
               />
             </div>
 
@@ -365,15 +606,12 @@ const RegisterVisitor = () => {
                 name="department"
                 value={formData.department}
                 onChange={handleChange}
-                required={currentStep === 3}
+                required={currentStep === 4}
               >
                 <option value="">Select Department</option>
-                <option value="HR / Recruitment">HR / Recruitment</option>
-                <option value="IT / Software Engineering">IT / Software Engineering</option>
-                <option value="Sales / Marketing">Sales / Marketing</option>
-                <option value="Finance / Accounts">Finance / Accounts</option>
-                <option value="Operations / Admin">Operations / Admin</option>
-                <option value="Executive Management">Executive Management</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.name}>{dept.name}</option>
+                ))}
               </select>
             </div>
 
@@ -388,7 +626,6 @@ const RegisterVisitor = () => {
               />
             </div>
 
-
             <div className="form-group double-span">
               <label htmlFor="purpose">Purpose Of Visit <span className="required-star">*</span></label>
               <input
@@ -398,33 +635,9 @@ const RegisterVisitor = () => {
                 value={formData.purpose}
                 onChange={handleChange}
                 placeholder="E.g., Business Meeting, Job Interview, Delivery, Maintenance"
-                required={currentStep === 3}
+                required={currentStep === 4}
               />
             </div>
-          </div>
-        </div>
-
-        {/* Step 4: Photo Upload */}
-        <div style={{ display: currentStep === 4 ? 'block' : 'none' }}>
-          <div className="form-section-title">Visitor Photo</div>
-          <div className="form-photo-upload-section">
-            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-              <label htmlFor="photo">Upload Visitor Photo</label>
-              <input
-                type="file"
-                id="photo"
-                accept="image/*"
-                onChange={handlePhotoChange}
-                className="file-input"
-              />
-              <small className="help-text-block">Upload a clear photo of the visitor (Max 5MB)</small>
-            </div>
-            {photoPreview && (
-              <div className="photo-upload-preview-box">
-                <span className="preview-label">Photo Preview:</span>
-                <img src={photoPreview} alt="Preview" className="uploaded-photo-preview" />
-              </div>
-            )}
           </div>
         </div>
 
@@ -484,6 +697,65 @@ const RegisterVisitor = () => {
           </div>
         </div>
       </form>
+
+      {/* Receptionist Name Confirmation Modal */}
+      <AnimatePresence>
+        {showReceptionistModal && (
+          <div className="modal-overlay" style={{ zIndex: 1000 }}>
+            <motion.div 
+              className="visitor-pass-card"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              style={{ width: '400px', padding: '0', overflow: 'hidden', border: '1px solid var(--border-color)', background: 'var(--bg-card-solid)' }}
+            >
+              {/* Header */}
+              <div style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)', color: 'white', padding: '16px 20px' }}>
+                <h3 style={{ margin: 0, color: 'white', fontWeight: '800', fontSize: '15px' }}>RECEPTIONIST CONFIRMATION</h3>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                  Please confirm your name below to register the visitor entry.
+                </p>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label htmlFor="receptionistNameInput" style={{ fontWeight: '600', color: 'var(--text-muted)', fontSize: '11px', display: 'block', marginBottom: '6px' }}>RECEPTIONIST NAME *</label>
+                  <input
+                    type="text"
+                    id="receptionistNameInput"
+                    value={receptionistNameInput}
+                    onChange={(e) => setReceptionistNameInput(e.target.value)}
+                    placeholder="Enter your name"
+                    style={{ width: '100%', padding: '10px 14px', fontSize: '13px', border: '1.5px solid var(--border-color)', borderRadius: 'var(--radius-md)', background: 'var(--bg-app)', color: 'var(--text-dark)' }}
+                  />
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div style={{ display: 'flex', padding: '16px 20px', gap: '12px', borderTop: '1px solid var(--border-soft)', background: 'rgba(0,0,0,0.01)' }}>
+                <button 
+                  type="button"
+                  onClick={() => setShowReceptionistModal(false)} 
+                  className="btn btn-secondary" 
+                  style={{ flex: 1, padding: '10px' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button"
+                  onClick={handleConfirmRegistration} 
+                  className="btn btn-primary" 
+                  style={{ flex: 1, padding: '10px', background: 'var(--primary)' }}
+                >
+                  Confirm & Save
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

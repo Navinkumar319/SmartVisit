@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface CheckOutRepository extends JpaRepository<CheckOut, Integer> {
     Optional<CheckOut> findByVisitorVisitorId(Integer visitorId);
+    Optional<CheckOut> findTopByVisitorVisitorIdOrderByCheckoutTimeDesc(Integer visitorId);
 }

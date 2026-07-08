@@ -4,10 +4,20 @@ public class CheckOutRequest {
     private Integer visitorId;
     private String remarks;
 
+    private String securityName;
+
     // Constructors
     public CheckOutRequest() {}
 
     // Getters and Setters
+    public String getSecurityName() {
+        return securityName;
+    }
+
+    public void setSecurityName(String securityName) {
+        this.securityName = securityName;
+    }
+
     public Integer getVisitorId() {
         return visitorId;
     }

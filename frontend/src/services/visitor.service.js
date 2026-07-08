@@ -66,9 +66,20 @@ const VisitorService = {
     return response.data;
   },
 
-  // Check-out visitor (Admin only)
-  checkOutVisitor: async (visitorId, remarks) => {
-    const response = await api.post('/api/visitors/checkout', { visitorId, remarks });
+  checkOutVisitor: async (visitorId, securityName, remarks) => {
+    const response = await api.post('/api/visitors/checkout', { visitorId, securityName, remarks });
+    return response.data;
+  },
+
+  // Identify visitor by face photo
+  identifyFace: async (photo) => {
+    const response = await api.post('/api/visitors/identify-face', { photo });
+    return response.data;
+  },
+
+  // Verify visitor face similarity for gate check-in
+  verifyFace: async (visitorId, photo) => {
+    const response = await api.post('/api/visitors/verify-face', { visitorId, photo });
     return response.data;
   },
 };

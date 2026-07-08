@@ -2,19 +2,23 @@ package com.svms;
 
 import com.svms.entity.User;
 import com.svms.entity.Settings;
+import com.svms.entity.Department;
 import com.svms.repository.UserRepository;
 import com.svms.repository.SettingsRepository;
+import com.svms.repository.DepartmentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 @SpringBootApplication
+@EnableScheduling
 public class SvmsApplication {
 
     public static void main(String[] args) {
@@ -25,6 +29,7 @@ public class SvmsApplication {
     public CommandLineRunner initDatabase(
             UserRepository userRepository,
             SettingsRepository settingsRepository,
+            DepartmentRepository departmentRepository,
             PasswordEncoder passwordEncoder,
             org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
         return args -> {
@@ -44,6 +49,14 @@ public class SvmsApplication {
                 );
                 if (checkoutColCount == null || checkoutColCount == 0) {
                     jdbcTemplate.execute("ALTER TABLE checkouts ADD COLUMN visitor_name VARCHAR(100) NOT NULL DEFAULT ''");
+                }
+
+                Integer checkoutSecNameCount = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'checkouts' AND column_name = 'security_name'",
+                    Integer.class
+                );
+                if (checkoutSecNameCount == null || checkoutSecNameCount == 0) {
+                    jdbcTemplate.execute("ALTER TABLE checkouts ADD COLUMN security_name VARCHAR(100) NOT NULL DEFAULT ''");
                 }
 
                 Integer plainPasswordColCount = jdbcTemplate.queryForObject(
@@ -101,7 +114,7 @@ public class SvmsApplication {
                 Settings settings = new Settings();
                 settings.setId(1);
                 settings.setCompanyName("Smart Visitor Management System");
-                settings.setVisitorIdFormat("vis-");
+                settings.setVisitorIdFormat("VIS-");
                 settings.setEmailNotification(true);
                 settings.setSmsNotification(false);
                 
@@ -109,11 +122,22 @@ public class SvmsApplication {
                 System.out.println(">>> Default system settings seeded successfully!");
             } else {
                 Settings settings = existingSettings.get();
-                if ("VIS-".equals(settings.getVisitorIdFormat())) {
-                    settings.setVisitorIdFormat("vis-");
+                if ("vis-".equals(settings.getVisitorIdFormat())) {
+                    settings.setVisitorIdFormat("VIS-");
                     settingsRepository.save(settings);
-                    System.out.println(">>> Default system settings updated default prefix to 'vis-'");
+                    System.out.println(">>> Default system settings updated default prefix to 'VIS-'");
                 }
+            }
+
+            // 3. Seed Default Departments if not present
+            if (departmentRepository.count() == 0) {
+                departmentRepository.save(new Department("HR / Recruitment", "101", "1st Floor"));
+                departmentRepository.save(new Department("IT / Software Engineering", "204", "2nd Floor"));
+                departmentRepository.save(new Department("Sales / Marketing", "302", "3rd Floor"));
+                departmentRepository.save(new Department("Finance / Accounts", "401", "4th Floor"));
+                departmentRepository.save(new Department("Operations / Admin", "102", "1st Floor"));
+                departmentRepository.save(new Department("Executive Management", "501", "5th Floor"));
+                System.out.println(">>> Default departments seeded successfully!");
             }
         };
     }

@@ -25,12 +25,16 @@ public class CheckIn {
     @Column(name = "security_name", nullable = false, length = 100)
     private String securityName;
 
-    @Column(length = 255)
+    @Column(name = "remarks", length = 255)
     private String remarks;
+
+    @Column(name = "overstay_alert_sent", nullable = false)
+    private boolean overstayAlertSent = false;
 
     // Constructors
     public CheckIn() {
         this.checkinTime = LocalDateTime.now();
+        this.overstayAlertSent = false;
     }
 
     public CheckIn(Visitor visitor, String securityName, String remarks) {
@@ -39,6 +43,7 @@ public class CheckIn {
         this.securityName = securityName;
         this.remarks = remarks;
         this.checkinTime = LocalDateTime.now();
+        this.overstayAlertSent = false;
     }
 
     // Getters and Setters
@@ -88,5 +93,13 @@ public class CheckIn {
 
     public void setRemarks(String remarks) {
         this.remarks = remarks;
+    }
+
+    public boolean isOverstayAlertSent() {
+        return overstayAlertSent;
+    }
+
+    public void setOverstayAlertSent(boolean overstayAlertSent) {
+        this.overstayAlertSent = overstayAlertSent;
     }
 }

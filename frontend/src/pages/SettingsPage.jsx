@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import SystemService from '../services/system.service';
+import DepartmentService from '../services/department.service';
 import { motion } from 'framer-motion';
 import { 
   Settings, 
@@ -9,7 +10,13 @@ import {
   Save, 
   BellRing,
   Mail,
-  MessageSquare
+  MessageSquare,
+  MapPin,
+  Plus,
+  Trash2,
+  Edit,
+  Check,
+  X
 } from 'lucide-react';
 
 const formatLogoSrc = (logo) => {
@@ -34,6 +41,113 @@ const SettingsPage = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Department state variables
+  const [departments, setDepartments] = useState([]);
+  const [deptLoading, setDeptLoading] = useState(true);
+  const [editingDeptId, setEditingDeptId] = useState(null);
+  const [editFormData, setEditFormData] = useState({ name: '', roomNo: '', floor: '' });
+  const [newDeptData, setNewDeptData] = useState({ name: '', roomNo: '', floor: '' });
+  const [deptError, setDeptError] = useState('');
+  const [deptSuccess, setDeptSuccess] = useState('');
+  const [deptSaving, setDeptSaving] = useState(false);
+
+  const fetchDepartments = async () => {
+    setDeptLoading(true);
+    try {
+      const list = await DepartmentService.getAllDepartments();
+      setDepartments(list);
+    } catch (err) {
+      setDeptError('Failed to load departments.');
+    } finally {
+      setDeptLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
+
+  const handleEditClick = (dept) => {
+    setEditingDeptId(dept.id);
+    setEditFormData({
+      name: dept.name,
+      roomNo: dept.roomNo || '',
+      floor: dept.floor || '',
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingDeptId(null);
+    setEditFormData({ name: '', roomNo: '', floor: '' });
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleNewDeptChange = (e) => {
+    const { name, value } = e.target;
+    setNewDeptData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleUpdateDept = async (id) => {
+    if (!editFormData.name) {
+      setDeptError('Department Name is required.');
+      return;
+    }
+    setDeptSaving(true);
+    setDeptError('');
+    setDeptSuccess('');
+    try {
+      const updated = await DepartmentService.updateDepartment(id, editFormData);
+      setDepartments((prev) => prev.map((d) => (d.id === id ? updated : d)));
+      setEditingDeptId(null);
+      setDeptSuccess('Department updated successfully!');
+    } catch (err) {
+      setDeptError(err.response?.data?.message || 'Failed to update department.');
+    } finally {
+      setDeptSaving(false);
+    }
+  };
+
+  const handleCreateDept = async (e) => {
+    e.preventDefault();
+    if (!newDeptData.name) {
+      setDeptError('Department Name is required.');
+      return;
+    }
+    setDeptSaving(true);
+    setDeptError('');
+    setDeptSuccess('');
+    try {
+      const created = await DepartmentService.createDepartment(newDeptData);
+      setDepartments((prev) => [...prev, created]);
+      setNewDeptData({ name: '', roomNo: '', floor: '' });
+      setDeptSuccess('Department added successfully!');
+    } catch (err) {
+      setDeptError(err.response?.data?.message || 'Failed to add department.');
+    } finally {
+      setDeptSaving(false);
+    }
+  };
+
+  const handleDeleteDept = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this department?')) return;
+    setDeptSaving(true);
+    setDeptError('');
+    setDeptSuccess('');
+    try {
+      await DepartmentService.deleteDepartment(id);
+      setDepartments((prev) => prev.filter((d) => d.id !== id));
+      setDeptSuccess('Department deleted successfully!');
+    } catch (err) {
+      setDeptError(err.response?.data?.message || 'Failed to delete department.');
+    } finally {
+      setDeptSaving(false);
+    }
+  };
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -163,10 +277,12 @@ const SettingsPage = () => {
                     name="visitorIdFormat"
                     value={formData.visitorIdFormat}
                     onChange={handleChange}
-                    placeholder="E.g., vis-"
+                    placeholder="E.g., VIS-"
                     required
+                    readOnly
+                    style={{ backgroundColor: 'var(--border-soft)', cursor: 'not-allowed', textTransform: 'uppercase' }}
                   />
-                  <small className="help-text-block">e.g. vis-11022026-1</small>
+                  <small className="help-text-block">e.g. VIS-11022026-1</small>
                 </div>
               </div>
             </div>
@@ -238,6 +354,177 @@ const SettingsPage = () => {
                   </label>
                 </div>
               </div>
+            </div>
+
+            {/* Department Locations & Routing Configurations */}
+            <div className="content-card">
+              <h3 className="section-title-alt" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+                <MapPin size={18} style={{ color: 'var(--primary)' }} /> Department Locations & Routing
+              </h3>
+              
+              {deptError && <div className="alert alert-danger" style={{ marginBottom: '15px' }}>{deptError}</div>}
+              {deptSuccess && <div className="alert alert-success" style={{ marginBottom: '15px' }}>{deptSuccess}</div>}
+
+              {/* Add New Department Form */}
+              <div style={{ padding: '16px', border: '1px solid var(--border-soft)', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', marginBottom: '20px' }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: 'var(--text-dark)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Plus size={16} style={{ color: 'var(--primary)' }} /> Add New Department Routing Location
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '12px', alignItems: 'end' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '11px', marginBottom: '4px' }}>Department Name</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={newDeptData.name}
+                      onChange={handleNewDeptChange}
+                      placeholder="e.g. R&D Department"
+                      style={{ padding: '8px 12px', fontSize: '13px' }}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '11px', marginBottom: '4px' }}>Floor Location</label>
+                    <input
+                      type="text"
+                      name="floor"
+                      value={newDeptData.floor}
+                      onChange={handleNewDeptChange}
+                      placeholder="e.g. 3rd Floor"
+                      style={{ padding: '8px 12px', fontSize: '13px' }}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '11px', marginBottom: '4px' }}>Room Number</label>
+                    <input
+                      type="text"
+                      name="roomNo"
+                      value={newDeptData.roomNo}
+                      onChange={handleNewDeptChange}
+                      placeholder="e.g. Room 305"
+                      style={{ padding: '8px 12px', fontSize: '13px' }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCreateDept}
+                    className="btn btn-primary"
+                    disabled={deptSaving || !newDeptData.name}
+                    style={{ padding: '9px 16px', height: 'fit-content' }}
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              {/* Department Locations List */}
+              {deptLoading ? (
+                <div className="text-center py-4" style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading departments...</div>
+              ) : departments.length === 0 ? (
+                <div className="text-center py-4" style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No department routing configured. Add one above.</div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--border-soft)', borderRadius: 'var(--radius-md)' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1.5px solid var(--border-soft)', textAlign: 'left' }}>
+                        <th style={{ padding: '12px 16px', fontSize: '12.5px', fontWeight: '600', color: 'var(--text-muted)' }}>Department Name</th>
+                        <th style={{ padding: '12px 16px', fontSize: '12.5px', fontWeight: '600', color: 'var(--text-muted)' }}>Floor</th>
+                        <th style={{ padding: '12px 16px', fontSize: '12.5px', fontWeight: '600', color: 'var(--text-muted)' }}>Room Number</th>
+                        <th style={{ padding: '12px 16px', fontSize: '12.5px', fontWeight: '600', color: 'var(--text-muted)', textAlign: 'center', width: '120px' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {departments.map((dept) => {
+                        const isEditing = editingDeptId === dept.id;
+                        return (
+                          <tr key={dept.id} style={{ borderBottom: '1px solid var(--border-soft)', transition: 'background 0.2s' }}>
+                            {isEditing ? (
+                              <>
+                                <td style={{ padding: '8px 12px' }}>
+                                  <input
+                                    type="text"
+                                    name="name"
+                                    value={editFormData.name}
+                                    onChange={handleEditChange}
+                                    style={{ padding: '6px 10px', fontSize: '13px', width: '100%' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '8px 12px' }}>
+                                  <input
+                                    type="text"
+                                    name="floor"
+                                    value={editFormData.floor}
+                                    onChange={handleEditChange}
+                                    style={{ padding: '6px 10px', fontSize: '13px', width: '100%' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '8px 12px' }}>
+                                  <input
+                                    type="text"
+                                    name="roomNo"
+                                    value={editFormData.roomNo}
+                                    onChange={handleEditChange}
+                                    style={{ padding: '6px 10px', fontSize: '13px', width: '100%' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '8px 12px', display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateDept(dept.id)}
+                                    className="btn btn-primary"
+                                    style={{ padding: '6px', minWidth: 'auto', background: 'var(--success)', borderColor: 'var(--success)' }}
+                                    title="Save changes"
+                                    disabled={deptSaving}
+                                  >
+                                    <Check size={14} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleCancelEdit}
+                                    className="btn btn-secondary"
+                                    style={{ padding: '6px', minWidth: 'auto' }}
+                                    title="Cancel"
+                                    disabled={deptSaving}
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td style={{ padding: '12px 16px', fontSize: '13.5px', color: 'var(--text-dark)', fontWeight: '500' }}>{dept.name}</td>
+                                <td style={{ padding: '12px 16px', fontSize: '13.5px', color: 'var(--text-muted)' }}>{dept.floor || 'N/A'}</td>
+                                <td style={{ padding: '12px 16px', fontSize: '13.5px', color: 'var(--text-muted)' }}>{dept.roomNo || 'N/A'}</td>
+                                <td style={{ padding: '12px 16px', display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditClick(dept)}
+                                    className="btn btn-secondary"
+                                    style={{ padding: '6px', minWidth: 'auto' }}
+                                    title="Edit routing details"
+                                    disabled={deptSaving}
+                                  >
+                                    <Edit size={14} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteDept(dept.id)}
+                                    className="btn"
+                                    style={{ padding: '6px', minWidth: 'auto', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+                                    title="Delete department"
+                                    disabled={deptSaving}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <div className="form-actions-row">

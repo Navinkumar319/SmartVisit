@@ -77,7 +77,9 @@ const Reports = () => {
       return;
     }
 
-    const headers = ['Visitor Code', 'Name', 'Mobile', 'Email', 'Company', 'Purpose', 'Host', 'Department', 'Visit Date', 'Status'];
+    const headers = reportType === 'ai_matches'
+      ? ['Visitor Code', 'Name', 'Mobile', 'Match Reason', 'Matched With', 'Visit Date', 'Status']
+      : ['Visitor Code', 'Name', 'Mobile', 'Email', 'Company', 'Purpose', 'Host', 'Department', 'Visit Date', 'Status'];
     
     // Generate styled XML/HTML for Excel
     const excelTemplate = `
@@ -112,7 +114,17 @@ const Reports = () => {
             </tr>
           </thead>
           <tbody>
-            ${reportData.map(v => `
+            ${reportData.map(v => reportType === 'ai_matches' ? `
+              <tr>
+                <td style="font-weight: bold; mso-number-format:'\\@';">${v.visitorCode || ''}</td>
+                <td>${v.name || ''}</td>
+                <td style="mso-number-format:'\\@';">${v.mobile || ''}</td>
+                <td style="color: #ef4444; font-weight: bold;">${v.matchReason || ''}</td>
+                <td>${v.matchedWithCode || ''}</td>
+                <td style="mso-number-format:'\\@';">${formatCleanDate(v.visitDate)}</td>
+                <td>${v.status || ''}</td>
+              </tr>
+            ` : `
               <tr>
                 <td style="font-weight: bold; mso-number-format:'\\@';">${v.visitorCode || ''}</td>
                 <td>${v.name || ''}</td>
@@ -242,6 +254,7 @@ const Reports = () => {
             <option value="monthly">Monthly Visitors (Past 30 Days)</option>
             <option value="approved">Approved Visitors Only</option>
             <option value="rejected">Rejected Visitors Only</option>
+            <option value="ai_matches">✨ AI Data Integrity & Matches</option>
           </select>
         </div>
 
@@ -356,20 +369,51 @@ const Reports = () => {
                   <th>Code</th>
                   <th>Visitor Name</th>
                   <th>Mobile</th>
-                  <th>Host</th>
-                  <th>Department</th>
+                  {reportType === 'ai_matches' ? (
+                    <>
+                      <th>Match Reason</th>
+                      <th>Matched With</th>
+                    </>
+                  ) : (
+                    <>
+                      <th>Host</th>
+                      <th>Department</th>
+                    </>
+                  )}
                   <th>Visit Date</th>
                   <th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {reportData.map((v) => (
-                  <tr key={v.visitorId}>
+                  <tr key={v.visitorId} style={reportType === 'ai_matches' ? { borderLeft: '4px solid #ef4444' } : {}}>
                     <td className="font-bold">{v.visitorCode}</td>
                     <td>{v.name}</td>
                     <td>{formatCleanMobile(v.mobile)}</td>
-                    <td>{v.personToMeet}</td>
-                    <td>{v.department}</td>
+                    {reportType === 'ai_matches' ? (
+                      <>
+                        <td>
+                          <span style={{ 
+                            color: '#ef4444', 
+                            fontWeight: '600', 
+                            fontSize: '12px',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            padding: '4px 8px',
+                            borderRadius: '4px'
+                          }}>
+                            {v.matchReason}
+                          </span>
+                        </td>
+                        <td style={{ color: 'var(--text-muted)', fontSize: '12.5px', fontFamily: 'monospace' }}>
+                          {v.matchedWithCode}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td>{v.personToMeet}</td>
+                        <td>{v.department}</td>
+                      </>
+                    )}
                     <td>{formatCleanDate(v.visitDate)}</td>
                     <td>
                       <span className={getStatusBadgeClass(v.status)}>{v.status.replace('_', ' ')}</span>

@@ -12,6 +12,31 @@ import {
   TrendingUp
 } from 'lucide-react';
 
+const parseCheckinTime = (timeStr) => {
+  if (!timeStr) return null;
+  const parts = timeStr.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})\s+(am|pm)$/i);
+  if (!parts) return new Date(timeStr);
+  let [, year, month, day, hours, minutes, seconds, ampm] = parts;
+  let hrs = parseInt(hours, 10);
+  if (ampm.toLowerCase() === 'pm' && hrs < 12) hrs += 12;
+  if (ampm.toLowerCase() === 'am' && hrs === 12) hrs = 0;
+  return new Date(year, month - 1, day, hrs, minutes, seconds);
+};
+
+const getOverstayingVisitors = (visitors) => {
+  return visitors.filter((v) => {
+    if (v.status !== 'CHECKED_IN' || !v.checkinTime) return false;
+    const checkinDate = parseCheckinTime(v.checkinTime);
+    return checkinDate ? ((new Date() - checkinDate) / 3600000) >= 8.0 : false;
+  });
+};
+
+const getOverstayHours = (timeStr) => {
+  const date = parseCheckinTime(timeStr);
+  if (!date) return 0;
+  return ((new Date() - date) / 3600000).toFixed(1);
+};
+
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -27,6 +52,7 @@ const Dashboard = () => {
   const [recentActivities, setRecentActivities] = useState([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [error, setError] = useState('');
+  const [overstayingVisitors, setOverstayingVisitors] = useState([]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -36,6 +62,7 @@ const Dashboard = () => {
           VisitorService.getAllVisitors()
         ]);
         setStats(statsData);
+        setOverstayingVisitors(getOverstayingVisitors(visitorsData));
 
         const todayStr = new Date().toLocaleDateString('en-CA');
         const activities = [];
@@ -97,6 +124,60 @@ const Dashboard = () => {
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
+
+      {/* Visitor Overstay Alert Banners */}
+      {overstayingVisitors.length > 0 && (
+        <motion.div 
+          className="alert alert-danger"
+          style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '12px', 
+            borderLeft: '4px solid #ef4444',
+            background: 'rgba(239, 68, 68, 0.08)',
+            padding: '16px 20px',
+            borderRadius: '12px',
+            marginBottom: '24px'
+          }}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#ef4444', fontWeight: 'bold' }}>
+            <span style={{ fontSize: '18px' }}>⚠️</span>
+            <span>Visitor Overstay Warning</span>
+          </div>
+          <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-light)' }}>
+            The following visitor(s) have been checked in for more than 8 hours. Please check them out:
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+            {overstayingVisitors.map(v => (
+              <div 
+                key={v.visitorId}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  background: 'var(--bg-card-solid)',
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-color)',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+              >
+                <div style={{ fontSize: '13.5px' }}>
+                  <strong style={{ color: 'var(--primary)' }}>{v.visitorCode}</strong> — <strong>{v.name}</strong> 
+                  <span style={{ color: 'var(--text-muted)' }}> (Host: {v.personToMeet} in {v.department})</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '12px', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', padding: '3px 8px', borderRadius: '4px', fontWeight: 'bold' }}>
+                    Inside: {getOverstayHours(v.checkinTime)} hrs
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* 6 Metric Statistics Cards with Animations */}
       <div className="dashboard-cards-grid">

@@ -85,3 +85,11 @@ CREATE TABLE IF NOT EXISTS otp (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 8. Departments Table
+CREATE TABLE IF NOT EXISTS departments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    room_no VARCHAR(50),
+    floor VARCHAR(50)
+);
+

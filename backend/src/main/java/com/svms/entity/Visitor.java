@@ -63,6 +63,9 @@ public class Visitor {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    @Transient
+    private Double similarityScore;
+
     // Constructors
     public Visitor() {
         this.createdAt = LocalDateTime.now();
@@ -212,6 +215,12 @@ public class Visitor {
     @Transient
     private String checkoutTime;
 
+    @Transient
+    private String checkinBy;
+
+    @Transient
+    private String checkoutBy;
+
     public String getCheckinTime() {
         return checkinTime;
     }
@@ -226,5 +235,73 @@ public class Visitor {
 
     public void setCheckoutTime(String checkoutTime) {
         this.checkoutTime = checkoutTime;
+    }
+
+    public String getCheckinBy() {
+        return checkinBy;
+    }
+
+    public void setCheckinBy(String checkinBy) {
+        this.checkinBy = checkinBy;
+    }
+
+    public String getCheckoutBy() {
+        return checkoutBy;
+    }
+
+    public void setCheckoutBy(String checkoutBy) {
+        this.checkoutBy = checkoutBy;
+    }
+
+    public Double getSimilarityScore() {
+        return similarityScore;
+    }
+
+    public void setSimilarityScore(Double similarityScore) {
+        this.similarityScore = similarityScore;
+    }
+
+    @Transient
+    private String floor;
+
+    @Transient
+    private String roomNo;
+
+    @Transient
+    private String matchReason;
+
+    @Transient
+    private String matchedWithCode;
+
+    public String getFloor() {
+        return floor;
+    }
+
+    public void setFloor(String floor) {
+        this.floor = floor;
+    }
+
+    public String getRoomNo() {
+        return roomNo;
+    }
+
+    public void setRoomNo(String roomNo) {
+        this.roomNo = roomNo;
+    }
+
+    public String getMatchReason() {
+        return matchReason;
+    }
+
+    public void setMatchReason(String matchReason) {
+        this.matchReason = matchReason;
+    }
+
+    public String getMatchedWithCode() {
+        return matchedWithCode;
+    }
+
+    public void setMatchedWithCode(String matchedWithCode) {
+        this.matchedWithCode = matchedWithCode;
     }
 }

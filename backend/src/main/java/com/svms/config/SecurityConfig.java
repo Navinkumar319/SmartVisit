@@ -60,10 +60,12 @@ public class SecurityConfig {
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/settings/**", "/api/settings").hasRole("ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/settings/**", "/api/settings").hasAnyRole("ADMIN", "RECEPTION", "SECURITY")
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/departments/**", "/api/departments").hasAnyRole("ADMIN", "RECEPTION")
+                .requestMatchers("/api/departments/**", "/api/departments").hasRole("ADMIN")
                 .requestMatchers("/api/reports/**").hasRole("ADMIN")
                 
                 // Check-in and Check-out is Security & Admin
-                .requestMatchers("/api/visitors/checkin/**", "/api/visitors/checkin").hasAnyRole("SECURITY", "ADMIN")
+                .requestMatchers("/api/visitors/checkin/**", "/api/visitors/checkin", "/api/visitors/verify-face").hasAnyRole("SECURITY", "ADMIN")
                 .requestMatchers("/api/visitors/checkout/**", "/api/visitors/checkout").hasAnyRole("SECURITY", "ADMIN")
                 
                 // Approvals is Admin only
@@ -71,6 +73,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/visitors/reject/**", "/api/visitors/reject").hasRole("ADMIN")
                 
                 // Register and Update visitors is Reception only
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/visitors/identify-face").hasAnyRole("RECEPTION", "ADMIN", "SECURITY")
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/visitors").hasRole("RECEPTION")
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/visitors/**").hasRole("RECEPTION")
                 

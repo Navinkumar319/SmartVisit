@@ -22,22 +22,39 @@ public class CheckOut {
     @Column(name = "checkout_time")
     private LocalDateTime checkoutTime;
 
+    @Column(name = "security_name", nullable = false, length = 100)
+    private String securityName;
+
     @Column(length = 255)
     private String remarks;
 
     // Constructors
     public CheckOut() {
         this.checkoutTime = LocalDateTime.now();
+        this.securityName = "";
     }
 
     public CheckOut(Visitor visitor, String remarks) {
+        this(visitor, "System", remarks);
+    }
+
+    public CheckOut(Visitor visitor, String securityName, String remarks) {
         this.visitor = visitor;
         this.visitorName = visitor != null ? visitor.getName() : "";
+        this.securityName = securityName;
         this.remarks = remarks;
         this.checkoutTime = LocalDateTime.now();
     }
 
     // Getters and Setters
+    public String getSecurityName() {
+        return securityName;
+    }
+
+    public void setSecurityName(String securityName) {
+        this.securityName = securityName;
+    }
+
     public String getVisitorName() {
         return visitorName;
     }

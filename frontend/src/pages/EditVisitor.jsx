@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import VisitorService from '../services/visitor.service';
+import DepartmentService from '../services/department.service';
 import { motion } from 'framer-motion';
 import { 
   User, 
@@ -17,6 +18,19 @@ import {
 const EditVisitor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const list = await DepartmentService.getAllDepartments();
+        setDepartments(list);
+      } catch (err) {
+        console.error('Failed to load departments:', err);
+      }
+    };
+    fetchDepartments();
+  }, []);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -373,12 +387,9 @@ const EditVisitor = () => {
                 required={currentStep === 3}
               >
                 <option value="">Select Department</option>
-                <option value="HR / Recruitment">HR / Recruitment</option>
-                <option value="IT / Software Engineering">IT / Software Engineering</option>
-                <option value="Sales / Marketing">Sales / Marketing</option>
-                <option value="Finance / Accounts">Finance / Accounts</option>
-                <option value="Operations / Admin">Operations / Admin</option>
-                <option value="Executive Management">Executive Management</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.name}>{dept.name}</option>
+                ))}
               </select>
             </div>
 

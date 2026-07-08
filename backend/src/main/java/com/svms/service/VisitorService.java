@@ -19,6 +19,9 @@ public class VisitorService {
     private VisitorRepository visitorRepository;
 
     @Autowired
+    private DepartmentRepository departmentRepository;
+
+    @Autowired
     private CheckInRepository checkInRepository;
 
     @Autowired
@@ -29,6 +32,9 @@ public class VisitorService {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private ImageSimilarityService imageSimilarityService;
 
     // 1. Generate Next Visitor Code
     public String generateNextVisitorCode() {
@@ -106,13 +112,63 @@ public class VisitorService {
         visitor.setStatus("APPROVED");
         if (visitDate != null) {
             visitor.setVisitDate(visitDate);
+        } else if (visitor.getVisitDate() == null) {
+            visitor.setVisitDate(LocalDate.now());
         }
-        if (visitTime != null) {
+        
+        // Record approval time as visitTime (respect passed visitTime if present, else default to current time)
+        if (visitTime != null && !visitTime.trim().isEmpty()) {
             visitor.setVisitTime(visitTime);
+        } else {
+            java.time.LocalTime nowTime = java.time.LocalTime.now();
+            java.time.format.DateTimeFormatter timeFormatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+            visitor.setVisitTime(nowTime.format(timeFormatter));
         }
-        visitorRepository.save(visitor);
+        Visitor saved = visitorRepository.save(visitor);
 
-        return visitor;
+        Settings settings = settingsRepository.findById(1).orElse(null);
+        boolean sendEmail = true;
+        if (settings != null && settings.getEmailNotification() != null) {
+            sendEmail = settings.getEmailNotification();
+        }
+
+        if (sendEmail) {
+            String deptName = saved.getDepartment();
+            String roomNo = "N/A";
+            String floor = "N/A";
+            if (deptName != null && !deptName.trim().isEmpty()) {
+                Optional<Department> deptOpt = departmentRepository.findByNameIgnoreCase(deptName.trim());
+                if (deptOpt.isPresent()) {
+                    roomNo = deptOpt.get().getRoomNo();
+                    floor = deptOpt.get().getFloor();
+                }
+            }
+            final String finalRoomNo = roomNo != null ? roomNo : "N/A";
+            final String finalFloor = floor != null ? floor : "N/A";
+            final String finalDept = deptName != null ? deptName : "N/A";
+
+            java.util.concurrent.CompletableFuture.runAsync(() -> {
+                try {
+                    emailService.sendApprovalPassEmail(
+                        saved.getEmail(),
+                        saved.getName(),
+                        saved.getVisitorCode(),
+                        saved.getPersonToMeet(),
+                        finalDept,
+                        saved.getPurpose(),
+                        saved.getVisitDate() != null ? saved.getVisitDate().toString() : "N/A",
+                        saved.getVisitTime() != null ? saved.getVisitTime() : "N/A",
+                        finalRoomNo,
+                        finalFloor
+                    );
+                } catch (Exception e) {
+                    System.err.println(">>> Failed to send visitor approval pass email asynchronously: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            });
+        }
+
+        return saved;
     }
 
     // 6. Reject Visitor (Admin/Reception)
@@ -133,7 +189,17 @@ public class VisitorService {
         Visitor visitor = visitorRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Visitor not found with id: " + id));
 
-        if (!"APPROVED".equals(visitor.getStatus())) {
+        if ("PENDING".equals(visitor.getStatus())) {
+            visitor.setStatus("APPROVED");
+            if (visitor.getVisitDate() == null) {
+                visitor.setVisitDate(LocalDate.now());
+            }
+            if (visitor.getVisitTime() == null || visitor.getVisitTime().trim().isEmpty()) {
+                java.time.LocalTime nowTime = java.time.LocalTime.now();
+                java.time.format.DateTimeFormatter timeFormatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+                visitor.setVisitTime(nowTime.format(timeFormatter));
+            }
+        } else if (!"APPROVED".equals(visitor.getStatus())) {
             throw new IllegalStateException("Visitor must be APPROVED before checking in!");
         }
 
@@ -166,6 +232,20 @@ public class VisitorService {
         boolean sendEmail = settings.getEmailNotification() != null && settings.getEmailNotification();
         boolean sendSms = settings.getSmsNotification() != null && settings.getSmsNotification();
 
+        String deptName = saved.getDepartment();
+        String roomNo = "N/A";
+        String floor = "N/A";
+        if (deptName != null && !deptName.trim().isEmpty()) {
+            Optional<Department> deptOpt = departmentRepository.findByNameIgnoreCase(deptName.trim());
+            if (deptOpt.isPresent()) {
+                roomNo = deptOpt.get().getRoomNo();
+                floor = deptOpt.get().getFloor();
+            }
+        }
+        final String finalRoomNo = roomNo != null ? roomNo : "N/A";
+        final String finalFloor = floor != null ? floor : "N/A";
+        final String finalDept = deptName != null ? deptName : "N/A";
+
         if (sendEmail) {
             java.util.concurrent.CompletableFuture.runAsync(() -> {
                 try {
@@ -174,7 +254,10 @@ public class VisitorService {
                         saved.getName(),
                         saved.getVisitorCode(),
                         saved.getCheckinTime(),
-                        securityName
+                        securityName,
+                        finalDept,
+                        finalRoomNo,
+                        finalFloor
                     );
                 } catch (Exception e) {
                     System.err.println(">>> Failed to send visitor check-in email asynchronously: " + e.getMessage());
@@ -191,7 +274,7 @@ public class VisitorService {
 
     // 8. Check-Out Visitor (Admin only)
     @Transactional
-    public Visitor checkOutVisitor(Integer id, String remarks) {
+    public Visitor checkOutVisitor(Integer id, String securityName, String remarks) {
         Visitor visitor = visitorRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Visitor not found with id: " + id));
 
@@ -202,7 +285,7 @@ public class VisitorService {
         visitor.setStatus("CHECKED_OUT");
         Visitor saved = visitorRepository.save(visitor);
 
-        CheckOut checkOut = new CheckOut(saved, remarks);
+        CheckOut checkOut = new CheckOut(saved, securityName, remarks);
         checkOutRepository.save(checkOut);
 
         populateCheckTimes(saved);
@@ -211,6 +294,20 @@ public class VisitorService {
         boolean sendEmail = settings.getEmailNotification() != null && settings.getEmailNotification();
         boolean sendSms = settings.getSmsNotification() != null && settings.getSmsNotification();
 
+        String deptName = saved.getDepartment();
+        String roomNo = "N/A";
+        String floor = "N/A";
+        if (deptName != null && !deptName.trim().isEmpty()) {
+            Optional<Department> deptOpt = departmentRepository.findByNameIgnoreCase(deptName.trim());
+            if (deptOpt.isPresent()) {
+                roomNo = deptOpt.get().getRoomNo();
+                floor = deptOpt.get().getFloor();
+            }
+        }
+        final String finalRoomNo = roomNo != null ? roomNo : "N/A";
+        final String finalFloor = floor != null ? floor : "N/A";
+        final String finalDept = deptName != null ? deptName : "N/A";
+
         if (sendEmail) {
             java.util.concurrent.CompletableFuture.runAsync(() -> {
                 try {
@@ -218,7 +315,10 @@ public class VisitorService {
                         saved.getEmail(),
                         saved.getName(),
                         saved.getVisitorCode(),
-                        saved.getCheckoutTime()
+                        saved.getCheckoutTime(),
+                        finalDept,
+                        finalRoomNo,
+                        finalFloor
                     );
                 } catch (Exception e) {
                     System.err.println(">>> Failed to send visitor check-out email asynchronously: " + e.getMessage());
@@ -235,16 +335,25 @@ public class VisitorService {
 
     private Visitor populateCheckTimes(Visitor visitor) {
         if (visitor == null) return null;
-        checkInRepository.findByVisitorVisitorId(visitor.getVisitorId())
+        checkInRepository.findTopByVisitorVisitorIdOrderByCheckinTimeDesc(visitor.getVisitorId())
                 .ifPresent(checkin -> {
                     java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss a");
                     visitor.setCheckinTime(checkin.getCheckinTime().format(formatter));
+                    visitor.setCheckinBy(checkin.getSecurityName());
                 });
-        checkOutRepository.findByVisitorVisitorId(visitor.getVisitorId())
+        checkOutRepository.findTopByVisitorVisitorIdOrderByCheckoutTimeDesc(visitor.getVisitorId())
                 .ifPresent(checkout -> {
                     java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss a");
                     visitor.setCheckoutTime(checkout.getCheckoutTime().format(formatter));
+                    visitor.setCheckoutBy(checkout.getSecurityName());
                 });
+        if (visitor.getDepartment() != null) {
+            departmentRepository.findByName(visitor.getDepartment())
+                    .ifPresent(dept -> {
+                        visitor.setFloor(dept.getFloor());
+                        visitor.setRoomNo(dept.getRoomNo());
+                    });
+        }
         return visitor;
     }
 
@@ -260,7 +369,7 @@ public class VisitorService {
     }
 
     public List<Visitor> searchVisitors(String query) {
-        return visitorRepository.findByNameContainingIgnoreCaseOrVisitorCodeContainingIgnoreCaseOrPersonToMeetContainingIgnoreCase(query, query, query).stream()
+        return visitorRepository.searchVisitors(query).stream()
                 .map(this::populateCheckTimes)
                 .collect(Collectors.toList());
     }
@@ -271,5 +380,58 @@ public class VisitorService {
                 .collect(Collectors.toList());
     }
 
+    // 10. Find matching visitor using AI Face Similarity
+    public Optional<Visitor> findMatchingVisitor(String currentPhotoBase64) {
+        boolean[] currentHash = imageSimilarityService.getAverageHash(currentPhotoBase64);
+        if (currentHash == null) {
+            return Optional.empty();
+        }
 
+        List<Visitor> allVisitors = visitorRepository.findAll();
+        Visitor bestMatch = null;
+        double highestSimilarity = 0.0;
+        double threshold = 0.58; // 58% similarity threshold to match approx correctly without false matches
+
+        for (Visitor v : allVisitors) {
+            if (v.getPhoto() != null && !v.getPhoto().trim().isEmpty()) {
+                boolean[] previousHash = imageSimilarityService.getAverageHash(v.getPhoto());
+                if (previousHash != null) {
+                    double similarity = imageSimilarityService.getSimilarityScore(currentHash, previousHash);
+                    System.out.println("[AI FACE COMPARE] Comparing with " + v.getName() + " (" + v.getVisitorCode() + ") -> Similarity: " + similarity);
+                    if (similarity > highestSimilarity && similarity >= threshold) {
+                        highestSimilarity = similarity;
+                        bestMatch = v;
+                    }
+                }
+            }
+        }
+
+        if (bestMatch != null) {
+            System.out.println("[AI FACE MATCH] Found match: " + bestMatch.getName() + " with similarity: " + highestSimilarity);
+            bestMatch.setSimilarityScore(highestSimilarity);
+            return Optional.of(bestMatch);
+        }
+
+        return Optional.empty();
+    }
+
+    // 11. Compare pre-registered profile photo with live gate check-in photo
+    public double comparePhotos(Integer visitorId, String livePhotoBase64) {
+        Visitor visitor = visitorRepository.findById(visitorId)
+                .orElseThrow(() -> new IllegalArgumentException("Visitor not found with id: " + visitorId));
+
+        if (visitor.getPhoto() == null || visitor.getPhoto().trim().isEmpty()) {
+            throw new IllegalArgumentException("Visitor does not have a pre-registered photo for verification.");
+        }
+
+        boolean[] savedHash = imageSimilarityService.getAverageHash(visitor.getPhoto());
+        boolean[] liveHash = imageSimilarityService.getAverageHash(livePhotoBase64);
+
+        if (savedHash == null || liveHash == null) {
+            return 0.0;
+        }
+
+        // Return similarity percentage (0.0 to 100.0)
+        return imageSimilarityService.getSimilarityScore(savedHash, liveHash) * 100.0;
+    }
 }

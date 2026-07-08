@@ -4,13 +4,10 @@ import defaultLogo from '../assets/logo.png';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { 
-  Bell, 
   Sun, 
   Moon, 
   ChevronDown, 
   LogOut, 
-  User, 
-  Shield,
   Menu,
   X,
   LayoutDashboard, 
@@ -168,9 +165,6 @@ const Header = ({ companyName, companyLogo, isMobileOpen, setIsMobileOpen }) => 
             <>
               {/* Profile Dropdown */}
               <div className="user-profile-summary" ref={profileRef} onClick={() => setIsProfileOpen(prev => !prev)}>
-                <div className="profile-avatar" style={{ overflow: 'hidden' }}>
-                  {user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}
-                </div>
                 <div className="profile-details">
                   <span className="profile-name">{user.fullName}</span>
                 </div>

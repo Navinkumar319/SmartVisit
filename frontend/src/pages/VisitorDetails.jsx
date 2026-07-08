@@ -104,6 +104,25 @@ const VisitorDetails = () => {
     }
   };
 
+  const getFormattedCurrentTime = () => {
+    const now = new Date();
+    let hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const strHours = hours < 10 ? `0${hours}` : hours;
+    return `${strHours}:${minutes} ${ampm}`;
+  };
+
+  const displayDate = visitor.visitDate || (visitor.createdAt ? visitor.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]);
+
+  const displayTime = visitor.visitTime 
+    ? formatTimeHM(visitor.visitTime) 
+    : (visitor.createdAt 
+        ? formatTimeHM(visitor.createdAt.split('T')[1]?.split('.')[0]) 
+        : getFormattedCurrentTime());
+
   return (
     <div className="page-wrapper">
       <div className="page-header-row justify-between">
@@ -186,12 +205,12 @@ const VisitorDetails = () => {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <span style={{ color: 'var(--text-muted)', fontSize: '12.5px', fontWeight: '600' }}>Visit Date</span>
-                <span style={{ color: 'var(--text-dark)', fontWeight: '600' }}>{visitor.visitDate || 'N/A'}</span>
+                <span style={{ color: 'var(--text-dark)', fontWeight: '600' }}>{displayDate}</span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <span style={{ color: 'var(--text-muted)', fontSize: '12.5px', fontWeight: '600' }}>Visit Time</span>
-                <span style={{ color: 'var(--text-dark)', fontWeight: '600' }}>{formatTimeHM(visitor.visitTime)}</span>
+                <span style={{ color: 'var(--text-dark)', fontWeight: '600' }}>{displayTime}</span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: 'span 2' }}>
@@ -226,6 +245,11 @@ const VisitorDetails = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <span style={{ color: 'var(--text-muted)', fontSize: '12.5px', fontWeight: '600' }}>Check-In Time</span>
                   <span style={{ color: 'var(--text-dark)', fontWeight: '600' }}>{visitor.checkinTime}</span>
+                  {visitor.checkinBy && (
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      Desk: <strong style={{ color: 'var(--text-dark)' }}>{visitor.checkinBy}</strong>
+                    </span>
+                  )}
                 </div>
               )}
 
@@ -233,6 +257,11 @@ const VisitorDetails = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <span style={{ color: 'var(--text-muted)', fontSize: '12.5px', fontWeight: '600' }}>Check-Out Time</span>
                   <span style={{ color: 'var(--text-dark)', fontWeight: '600' }}>{visitor.checkoutTime}</span>
+                  {visitor.checkoutBy && (
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      Desk: <strong style={{ color: 'var(--text-dark)' }}>{visitor.checkoutBy}</strong>
+                    </span>
+                  )}
                 </div>
               )}
             </div>

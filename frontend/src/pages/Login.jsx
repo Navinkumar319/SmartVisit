@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { Shield, Lock, User, Eye, EyeOff, Building, Users, Calendar } from 'lucide-react';
+import { Shield, Lock, User, Eye, EyeOff, Building, Users } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 
 const Login = () => {
@@ -45,11 +45,11 @@ const Login = () => {
 
   return (
     <div className="auth-split-layout">
-      {/* Left Screen: Branding & Slogan Illustration */}
+      {/* Left Screen: Branding & About Website */}
       <div className="auth-illustration-side">
         <div className="illustration-logo-row">
-          <Shield size={32} style={{ color: 'var(--accent)' }} />
-          <span className="illustration-title">SmartVisitor AI</span>
+          <img src={logoImg} alt="SmartVisitor Logo" style={{ height: '32px', width: 'auto', objectFit: 'contain' }} />
+          <span className="illustration-title">SmartVisitor</span>
         </div>
 
         <div className="illustration-main-text">
@@ -57,41 +57,60 @@ const Login = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
+            style={{ fontSize: '32px', marginBottom: '16px' }}
           >
-            Securing Corporate Gates with AI.
+            About SmartVisitor
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.15 }}
+            style={{ fontSize: '14px', lineHeight: '1.6', marginBottom: '28px', color: 'rgba(255, 255, 255, 0.8)' }}
           >
-            Manage check-ins, approvals, identity verification, and access logs dynamically through our unified SaaS platform.
+            The Smart Visitor Management System (SVMS) is an enterprise digital logbook designed to manage, track, and secure visitor flows in real-time. It ensures safety and operational efficiency across corporate gates.
           </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+          >
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+              <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '8px', borderRadius: '8px', color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>
+                <Users size={18} />
+              </div>
+              <div>
+                <h4 style={{ color: '#FFFFFF', fontSize: '15px', fontWeight: '600' }}>Quick Visitor Check-In</h4>
+                <p style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: '12.5px', marginTop: '2px', lineHeight: '1.4' }}>Seamlessly record visitor logs, capture digital photos, and process host approvals quickly.</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+              <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '8px', borderRadius: '8px', color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>
+                <Shield size={18} />
+              </div>
+              <div>
+                <h4 style={{ color: '#FFFFFF', fontSize: '15px', fontWeight: '600' }}>Real-time Security Tracking</h4>
+                <p style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: '12.5px', marginTop: '2px', lineHeight: '1.4' }}>Monitor active visitors, print badges, flag overstays, and maintain complete digital audit trails.</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+              <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '8px', borderRadius: '8px', color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>
+                <Building size={18} />
+              </div>
+              <div>
+                <h4 style={{ color: '#FFFFFF', fontSize: '15px', fontWeight: '600' }}>Role-based Access & Dashboards</h4>
+                <p style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: '12.5px', marginTop: '2px', lineHeight: '1.4' }}>Provide specialized views for security officers, admins, and hosts to streamline approvals.</p>
+              </div>
+            </div>
+          </motion.div>
         </div>
 
-        {/* Stats Mockups */}
-        <motion.div 
-          className="illustration-stats-card"
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-        >
-          <div className="illustration-stat-item">
-            <Users size={20} style={{ color: 'var(--accent)', marginBottom: '4px' }} />
-            <span className="illustration-stat-val">1.2k+</span>
-            <span className="illustration-stat-lbl">Daily Visits</span>
-          </div>
-          <div className="illustration-stat-item" style={{ borderLeft: '1px solid rgba(255,255,255,0.15)', borderRight: '1px solid rgba(255,255,255,0.15)' }}>
-            <Calendar size={20} style={{ color: 'var(--accent)', marginBottom: '4px' }} />
-            <span className="illustration-stat-val">99.9%</span>
-            <span className="illustration-stat-lbl">Uptime</span>
-          </div>
-          <div className="illustration-stat-item">
-            <Building size={20} style={{ color: 'var(--accent)', marginBottom: '4px' }} />
-            <span className="illustration-stat-val">50+</span>
-            <span className="illustration-stat-lbl">Departments</span>
-          </div>
-        </motion.div>
+        <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.4)', zIndex: 10 }}>
+          &copy; {new Date().getFullYear()} SVMS. All rights reserved.
+        </div>
       </div>
 
       {/* Right Screen: Form Panel */}

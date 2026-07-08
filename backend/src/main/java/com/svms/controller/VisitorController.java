@@ -131,8 +131,72 @@ public class VisitorController {
     @PostMapping("/checkout")
     public ResponseEntity<?> checkOutVisitor(@RequestBody CheckOutRequest request) {
         try {
-            Visitor visitor = visitorService.checkOutVisitor(request.getVisitorId(), request.getRemarks());
+            Visitor visitor = visitorService.checkOutVisitor(
+                request.getVisitorId(),
+                request.getSecurityName() != null ? request.getSecurityName() : "System",
+                request.getRemarks()
+            );
             return ResponseEntity.ok(visitor);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
+        }
+    }
+
+    // 12. Identify Face / Match Photo (Reception & Admin)
+    @PostMapping("/identify-face")
+    public ResponseEntity<?> identifyFace(@RequestBody java.util.Map<String, String> request) {
+        try {
+            String photo = request.get("photo");
+            if (photo == null || photo.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(new ApiResponse(false, "Photo is required for identification."));
+            }
+            
+            return visitorService.findMatchingVisitor(photo)
+                    .<ResponseEntity<?>>map(visitor -> ResponseEntity.ok(new java.util.HashMap<String, Object>() {{
+                        put("matched", true);
+                        put("visitorId", visitor.getVisitorId());
+                        put("visitorCode", visitor.getVisitorCode());
+                        put("status", visitor.getStatus());
+                        put("name", visitor.getName());
+                        put("mobile", visitor.getMobile());
+                        put("email", visitor.getEmail());
+                        put("companyName", visitor.getCompanyName());
+                        put("idProofType", visitor.getIdProofType());
+                        put("idNumber", visitor.getIdNumber());
+                        put("photo", visitor.getPhoto());
+                        put("similarity", visitor.getSimilarityScore() != null ? Math.round(visitor.getSimilarityScore() * 1000.0) / 10.0 : 85.0);
+                    }}))
+                    .orElse(ResponseEntity.ok(new java.util.HashMap<String, Object>() {{
+                        put("matched", false);
+                    }}));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
+        }
+    }
+
+    // 13. Verify Gate Face Match (Security & Admin)
+    @PostMapping("/verify-face")
+    public ResponseEntity<?> verifyFace(@RequestBody java.util.Map<String, Object> request) {
+        try {
+            Integer visitorId = (Integer) request.get("visitorId");
+            String photo = (String) request.get("photo");
+            
+            if (visitorId == null) {
+                return ResponseEntity.badRequest().body(new ApiResponse(false, "Visitor ID is required."));
+            }
+            if (photo == null || photo.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(new ApiResponse(false, "Gate capture photo is required."));
+            }
+            
+            double confidence = visitorService.comparePhotos(visitorId, photo);
+            double threshold = 58.0; // 58% threshold for check-in verification matching
+            boolean matched = confidence >= threshold;
+            
+            return ResponseEntity.ok(new java.util.HashMap<String, Object>() {{
+                put("matched", matched);
+                put("confidence", Math.round(confidence * 10.0) / 10.0); // round to 1 decimal place
+                put("threshold", threshold);
+            }});
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new ApiResponse(false, e.getMessage()));
         }
