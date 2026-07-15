@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { Shield, Lock, User, Eye, EyeOff, Building, Users } from 'lucide-react';
 import logoImg from '../assets/logo.png';
+import GlowCard from '../components/GlowCard';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -49,7 +50,7 @@ const Login = () => {
       <div className="auth-illustration-side">
         <div className="illustration-logo-row">
           <img src={logoImg} alt="SmartVisitor Logo" style={{ height: '32px', width: 'auto', objectFit: 'contain' }} />
-          <span className="illustration-title">SmartVisitor</span>
+          <span className="illustration-title">SmartVisit</span>
         </div>
 
         <div className="illustration-main-text">
@@ -59,7 +60,7 @@ const Login = () => {
             transition={{ duration: 0.6 }}
             style={{ fontSize: '32px', marginBottom: '16px' }}
           >
-            About SmartVisitor
+            About SmartVisit
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -67,7 +68,7 @@ const Login = () => {
             transition={{ duration: 0.6, delay: 0.15 }}
             style={{ fontSize: '14px', lineHeight: '1.6', marginBottom: '28px', color: 'rgba(255, 255, 255, 0.8)' }}
           >
-            The Smart Visitor Management System (SVMS) is an enterprise digital logbook designed to manage, track, and secure visitor flows in real-time. It ensures safety and operational efficiency across corporate gates.
+            The SmartVisit (SVMS) is an enterprise digital logbook designed to manage, track, and secure visitor flows in real-time. It ensures safety and operational efficiency across corporate gates.
           </motion.p>
 
           <motion.div
@@ -121,7 +122,7 @@ const Login = () => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <div className="auth-box">
+          <GlowCard className="auth-box glow-primary">
             <div className="auth-logo" style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
               <img src={logoImg} alt="SVMS Logo" style={{ height: '48px', width: 'auto', objectFit: 'contain' }} />
             </div>
@@ -201,7 +202,7 @@ const Login = () => {
                 {loading ? 'Signing In...' : 'Login'}
               </button>
             </form>
-          </div>
+          </GlowCard>
         </motion.div>
       </div>
     </div>

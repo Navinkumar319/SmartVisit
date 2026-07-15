@@ -4,6 +4,7 @@ import SystemService from '../services/system.service';
 import VisitorService from '../services/visitor.service';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import GlowCard from '../components/GlowCard';
 import { 
   Users, 
   Clock, 
@@ -11,6 +12,7 @@ import {
   XCircle, 
   TrendingUp
 } from 'lucide-react';
+
 
 const parseCheckinTime = (timeStr) => {
   if (!timeStr) return null;
@@ -182,8 +184,8 @@ const Dashboard = () => {
       {/* 6 Metric Statistics Cards with Animations */}
       <div className="dashboard-cards-grid">
         {/* Total Visitors */}
-        <motion.div 
-          className="stat-card" 
+        <GlowCard 
+          className="stat-card glow-primary" 
           onClick={() => navigate('/visitors')}
           whileHover={{ y: -5 }}
         >
@@ -194,11 +196,11 @@ const Dashboard = () => {
             <span className="stat-number">{stats.totalVisitors}</span>
             <span className="stat-label">Total Visitors</span>
           </div>
-        </motion.div>
+        </GlowCard>
 
         {/* Visitors Today */}
-        <motion.div 
-          className="stat-card" 
+        <GlowCard 
+          className="stat-card glow-info" 
           onClick={() => navigate('/visitors?date=' + new Date().toISOString().split('T')[0])}
           whileHover={{ y: -5 }}
         >
@@ -209,11 +211,11 @@ const Dashboard = () => {
             <span className="stat-number">{stats.visitorsToday}</span>
             <span className="stat-label">Visitors Today</span>
           </div>
-        </motion.div>
+        </GlowCard>
 
         {/* Checked In */}
-        <motion.div 
-          className="stat-card" 
+        <GlowCard 
+          className="stat-card glow-success" 
           onClick={() => navigate('/visitors?status=CHECKED_IN')}
           whileHover={{ y: -5 }}
         >
@@ -224,11 +226,11 @@ const Dashboard = () => {
             <span className="stat-number">{stats.checkedInVisitors}</span>
             <span className="stat-label">Checked-In</span>
           </div>
-        </motion.div>
+        </GlowCard>
 
         {/* Checked Out */}
-        <motion.div 
-          className="stat-card" 
+        <GlowCard 
+          className="stat-card glow-muted" 
           onClick={() => navigate('/visitors?status=CHECKED_OUT')}
           whileHover={{ y: -5 }}
         >
@@ -239,11 +241,11 @@ const Dashboard = () => {
             <span className="stat-number">{stats.checkedOutVisitors}</span>
             <span className="stat-label">Checked-Out</span>
           </div>
-        </motion.div>
+        </GlowCard>
 
         {/* Pending Approvals */}
-        <motion.div 
-          className="stat-card" 
+        <GlowCard 
+          className="stat-card glow-warning" 
           onClick={() => navigate('/visitors?status=PENDING')}
           whileHover={{ y: -5 }}
         >
@@ -254,11 +256,11 @@ const Dashboard = () => {
             <span className="stat-number">{stats.pendingApprovals}</span>
             <span className="stat-label">Pending</span>
           </div>
-        </motion.div>
+        </GlowCard>
 
         {/* Rejected Visitors */}
-        <motion.div 
-          className="stat-card" 
+        <GlowCard 
+          className="stat-card glow-danger" 
           onClick={() => navigate('/visitors?status=REJECTED')}
           whileHover={{ y: -5 }}
         >
@@ -269,7 +271,7 @@ const Dashboard = () => {
             <span className="stat-number">{stats.rejectedVisitors}</span>
             <span className="stat-label">Rejected</span>
           </div>
-        </motion.div>
+        </GlowCard>
       </div>
 
       {/* Dynamic Live Activity Tracking Timeline */}

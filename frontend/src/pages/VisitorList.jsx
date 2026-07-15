@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import VisitorService from '../services/visitor.service';
 import SystemService from '../services/system.service';
 import { motion, AnimatePresence } from 'framer-motion';
+import GlowCard from '../components/GlowCard';
 import { 
   Search, 
   Filter, 
@@ -319,9 +320,9 @@ const VisitorList = () => {
       {loading ? (
         <div className="text-center py-4" style={{ color: 'var(--text-muted)' }}>Loading records...</div>
       ) : filteredVisitors.length === 0 ? (
-        <div className="text-center py-4 card-empty-state content-card">No visitor records found matching current criteria.</div>
+        <GlowCard className="text-center py-4 card-empty-state content-card glow-primary">No visitor records found matching current criteria.</GlowCard>
       ) : (
-        <div className="table-responsive content-card">
+        <GlowCard className="table-responsive content-card glow-primary">
           <table className="table">
             <thead>
               <tr>
@@ -457,7 +458,7 @@ const VisitorList = () => {
               ))}
             </tbody>
           </table>
-        </div>
+        </GlowCard>
       )}
 
       {/* Printable Visitor Pass Modal */}

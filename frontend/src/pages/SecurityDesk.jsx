@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import VisitorService from '../services/visitor.service';
 import * as faceapi from '@vladmandic/face-api';
 import { motion, AnimatePresence } from 'framer-motion';
+import GlowCard from '../components/GlowCard';
 import { 
   Shield, 
   Clock, 
@@ -471,7 +472,7 @@ const SecurityDesk = () => {
 
       {/* AI Face Scanning Panel */}
       <div className="security-scanner-panel">
-        <div className="webcam-card">
+        <GlowCard className="webcam-card glow-primary">
           <div className="webcam-card-header">
             <div className="webcam-header-title" style={{ color: 'var(--primary)' }}>
               <Shield size={18} />
@@ -638,21 +639,28 @@ const SecurityDesk = () => {
               </div>
             </div>
           ) : (
-            <div className="scanner-offline-screen" style={{ padding: '40px 0' }}>
-              <Shield size={48} style={{ opacity: 0.2 }} />
-              <p style={{ fontSize: '13.5px' }}>Webcam scanning is currently offline. Start the camera to activate AI Gate Sentinel.</p>
-              <button onClick={startCamera} className="btn btn-primary" style={{ padding: '10px 20px', fontSize: '13px' }}>
+            <div className="scanner-offline-screen" style={{ padding: '40px 0', position: 'relative' }}>
+              {/* Radar waves animation */}
+              <div className="offline-pulse-circle" />
+              <div className="offline-pulse-circle" style={{ animationDelay: '1s' }} />
+              <div className="offline-pulse-circle" style={{ animationDelay: '2s' }} />
+
+              <Shield size={48} className="pulse-icon" style={{ opacity: 0.8, color: 'var(--primary)', marginBottom: '16px', position: 'relative', zIndex: 1 }} />
+              <p style={{ fontSize: '13.5px', maxWidth: '400px', margin: '0 auto 20px auto', position: 'relative', zIndex: 1, textAlign: 'center', color: 'var(--text-light)' }}>
+                Webcam scanning is currently offline. Start the camera to activate AI Gate Sentinel.
+              </p>
+              <button onClick={startCamera} className="btn btn-primary" style={{ padding: '10px 24px', fontSize: '13px', position: 'relative', zIndex: 1 }}>
                 Activate AI Scanner
               </button>
             </div>
           )}
-        </div>
+        </GlowCard>
       </div>
 
       <div className="security-desk-grid">
         {/* Left Side: Gate pass check panel */}
         <div className="security-verification-panel">
-          <div className="panel-card">
+          <GlowCard className="panel-card glow-primary">
             <h3 className="section-title-alt" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Shield size={20} /> 1. Gate Pass Verification
             </h3>
@@ -737,7 +745,7 @@ const SecurityDesk = () => {
                 </div>
 
                 {/* Gate Entry Action Buttons */}
-                {(selectedVisitor.status === 'APPROVED' || selectedVisitor.status === 'PENDING') && (
+                {selectedVisitor.status === 'APPROVED' && (
                   <div style={{ borderTop: '1px solid var(--border-soft)', paddingTop: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     <button 
                       type="button" 
@@ -765,7 +773,7 @@ const SecurityDesk = () => {
 
                 {selectedVisitor.status === 'PENDING' && (
                   <div style={{ marginTop: '16px', background: 'var(--warning-bg)', border: '1px dashed var(--warning)', padding: '16px', borderRadius: 'var(--radius-md)', textAlign: 'center', fontSize: '13.5px' }}>
-                    <strong>Access Flagged:</strong> Visitor pass is pending approval. You can verify and check them in directly via security check-in confirmation modal.
+                    <strong>Access Blocked:</strong> Visitor pass is pending approval. Please approve the visitor from the Visitor Log list before attempting gate check-in.
                   </div>
                 )}
 
@@ -776,12 +784,12 @@ const SecurityDesk = () => {
                 )}
               </div>
             )}
-          </div>
+          </GlowCard>
         </div>
 
         {/* Right Side: Building monitor panel */}
         <div className="security-monitoring-panel">
-          <div className="panel-card">
+          <GlowCard className="panel-card glow-info">
             <h3 className="section-title-alt" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Users size={20} /> Active Building Occupancy ({insideVisitors.length})
             </h3>
@@ -833,7 +841,7 @@ const SecurityDesk = () => {
                 </table>
               </div>
             )}
-          </div>
+          </GlowCard>
         </div>
       </div>
 

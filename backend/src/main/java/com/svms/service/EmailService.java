@@ -6,6 +6,9 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
+
 import java.time.LocalDate;
 
 @Service
@@ -16,6 +19,16 @@ public class EmailService {
 
     @org.springframework.beans.factory.annotation.Value("${spring.mail.username:}")
     private String fromEmail;
+
+    @PostConstruct
+    public void init() {
+        if (mailSender instanceof JavaMailSenderImpl) {
+            JavaMailSenderImpl impl = (JavaMailSenderImpl) mailSender;
+            System.out.println(">>> [EMAIL SERVICE] SMTP Initialized - Host: " + impl.getHost() + ", Port: " + impl.getPort() + ", Username: " + impl.getUsername());
+        } else {
+            System.out.println(">>> [EMAIL SERVICE] JavaMailSender is NULL or not an instance of JavaMailSenderImpl. Simulating emails.");
+        }
+    }
 
     /**
      * Sends a generic HTML email message.

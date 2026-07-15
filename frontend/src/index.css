@@ -442,6 +442,168 @@ a:hover {
   transition: background-color var(--transition-theme), border-color var(--transition-theme), box-shadow var(--transition-theme);
 }
 
+/* Reusable Interactive Glow Card System */
+.glow-card-container {
+  position: relative;
+  border-radius: var(--radius-md);
+  background-color: var(--bg-card);
+  transition: transform var(--transition-fast), background-color var(--transition-theme), box-shadow var(--transition-theme);
+  z-index: 1;
+  overflow: hidden;
+  box-sizing: border-box;
+  
+  /* Default Theme-based Glow Colors */
+  --glow-color: var(--primary);
+  --glow-bg: var(--primary-glow);
+  --glow-border-opacity: 0.35;
+}
+
+/* Subtle background spotlight glow */
+.glow-card-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    400px circle at var(--mouse-x, -999px) var(--mouse-y, -999px),
+    var(--glow-bg),
+    transparent 65%
+  );
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Inner contents container */
+.glow-card-content {
+  position: relative;
+  z-index: 1;
+  border-radius: inherit;
+  width: 100%;
+  height: 100%;
+}
+
+/* 1px glowing border overlay */
+.glow-card-container::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(
+    320px circle at var(--mouse-x, -999px) var(--mouse-y, -999px),
+    var(--glow-color),
+    transparent 60%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Base border overlay when not hovered (to maintain border structure seamlessly) */
+.glow-card-container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--border-color);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  z-index: 2;
+  transition: background-color var(--transition-theme);
+}
+
+/* Activation state for glow (Hover or touch) */
+.glow-card-container:hover,
+.glow-card-container.active-glow {
+  box-shadow: var(--shadow-md);
+}
+
+.glow-card-container:hover::after,
+.glow-card-container.active-glow::after,
+.glow-card-container:hover .glow-card-glow,
+.glow-card-container.active-glow .glow-card-glow {
+  opacity: 1;
+}
+
+/* Clicked/Active Full Border & Corner Glow State */
+.glow-card-container.clicked-glow {
+  box-shadow: var(--shadow-glow), 0 0 24px var(--primary-glow) !important;
+  transform: translateY(-2px) scale(1.002);
+}
+
+.glow-card-container.clicked-glow::after {
+  opacity: 1 !important;
+  background: 
+    radial-gradient(
+      320px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+      var(--glow-color),
+      transparent 60%
+    ),
+    linear-gradient(135deg, var(--glow-color), var(--accent), var(--glow-color)) !important;
+  animation: borderRotate 3s linear infinite;
+  background-size: 200% 200%;
+}
+
+.glow-card-container.clicked-glow .glow-card-glow {
+  opacity: 0.8 !important;
+  background: radial-gradient(
+    circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    var(--glow-bg),
+    transparent 80%
+  ) !important;
+}
+
+@keyframes borderRotate {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Card Glow Variants */
+.glow-primary {
+  --glow-color: var(--primary);
+  --glow-bg: var(--primary-glow);
+}
+
+.glow-accent {
+  --glow-color: var(--accent);
+  --glow-bg: rgba(16, 185, 129, 0.08);
+}
+
+.glow-success {
+  --glow-color: var(--success);
+  --glow-bg: var(--success-bg);
+}
+
+.glow-warning {
+  --glow-color: var(--warning);
+  --glow-bg: var(--warning-bg);
+}
+
+.glow-danger {
+  --glow-color: var(--danger);
+  --glow-bg: var(--danger-bg);
+}
+
+.glow-info {
+  --glow-color: var(--info);
+  --glow-bg: var(--info-bg);
+}
+
+.glow-muted {
+  --glow-color: var(--text-light);
+  --glow-bg: rgba(148, 163, 184, 0.04);
+}
+
+
 .card-empty-state {
   display: flex;
   align-items: center;
@@ -540,6 +702,26 @@ a:hover {
   border-color: var(--primary);
   box-shadow: var(--shadow-md);
 }
+
+/* Stat Card Adapters for Glow Card container */
+.stat-card.glow-card-container {
+  border: none;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.stat-card.glow-card-container:hover {
+  transform: none; /* Let Framer Motion handle translate animation */
+}
+
+.stat-card.glow-card-container .glow-card-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+}
+
 
 .stat-icon {
   width: 48px;
