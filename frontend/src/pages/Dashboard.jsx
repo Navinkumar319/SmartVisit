@@ -33,10 +33,53 @@ const getOverstayingVisitors = (visitors) => {
   });
 };
 
-const getOverstayHours = (timeStr) => {
+
+
+const getOverstayDurationText = (timeStr) => {
   const date = parseCheckinTime(timeStr);
-  if (!date) return 0;
-  return ((new Date() - date) / 3600000).toFixed(1);
+  if (!date) return '0 min';
+  const diffMs = new Date() - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 60) {
+    return `${diffMins} min`;
+  }
+  return `${(diffMins / 60).toFixed(1)} hrs`;
+};
+
+const formatCleanDate = (dateStr) => {
+  if (!dateStr) return 'N/A';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parts[0];
+    const month = parts[1];
+    const day = parts[2];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const mIdx = parseInt(month, 10) - 1;
+    if (mIdx >= 0 && mIdx < 12) {
+      return `${day} ${months[mIdx]} ${year}`;
+    }
+  }
+  return dateStr;
+};
+
+const formatCleanMobile = (mobileStr) => {
+  if (!mobileStr) return 'N/A';
+  const cleaned = mobileStr.replace(/\s+/g, '');
+  if (cleaned.length === 10) {
+    return `${cleaned.slice(0, 5)}-${cleaned.slice(5)}`;
+  }
+  return mobileStr;
+};
+
+const getStatusBadgeClass = (status) => {
+  switch (status) {
+    case 'PENDING': return 'badge badge-warning';
+    case 'APPROVED': return 'badge badge-success';
+    case 'REJECTED': return 'badge badge-danger';
+    case 'CHECKED_IN': return 'badge badge-info';
+    case 'CHECKED_OUT': return 'badge badge-dark';
+    default: return 'badge';
+  }
 };
 
 const Dashboard = () => {
@@ -53,51 +96,54 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [recentActivities, setRecentActivities] = useState([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
+  const [compilationRecords, setCompilationRecords] = useState([]);
+  const [loadingCompilations, setLoadingCompilations] = useState(true);
   const [error, setError] = useState('');
   const [overstayingVisitors, setOverstayingVisitors] = useState([]);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [statsData, visitorsData] = await Promise.all([
+        const [statsData, visitorsData, aiMatchesData] = await Promise.all([
           SystemService.getDashboardStats(),
-          VisitorService.getAllVisitors()
+          VisitorService.getAllVisitors(),
+          SystemService.getReportData('ai_matches')
         ]);
         setStats(statsData);
         setOverstayingVisitors(getOverstayingVisitors(visitorsData));
+        setCompilationRecords(aiMatchesData);
 
-        const todayStr = new Date().toLocaleDateString('en-CA');
         const activities = [];
         visitorsData.forEach(v => {
-          if (v.visitDate === todayStr) {
-            if (v.checkinTime && v.checkinTime !== 'N/A') {
-              activities.push({
-                key: `${v.visitorId}-in`,
-                id: v.visitorId,
-                code: v.visitorCode,
-                name: v.name,
-                host: v.personToMeet,
-                dept: v.department,
-                purpose: v.purpose,
-                status: 'CHECKED_IN',
-                time: v.checkinTime,
-                timestamp: new Date(v.checkinTime.replace(/-/g, '/')).getTime() || v.visitorId
-              });
-            }
-            if (v.checkoutTime && v.checkoutTime !== 'N/A') {
-              activities.push({
-                key: `${v.visitorId}-out`,
-                id: v.visitorId,
-                code: v.visitorCode,
-                name: v.name,
-                host: v.personToMeet,
-                dept: v.department,
-                purpose: v.purpose,
-                status: 'CHECKED_OUT',
-                time: v.checkoutTime,
-                timestamp: new Date(v.checkoutTime.replace(/-/g, '/')).getTime() || (v.visitorId + 0.5)
-              });
-            }
+          if (v.checkinTime && v.checkinTime !== 'N/A') {
+            const dateObj = parseCheckinTime(v.checkinTime);
+            activities.push({
+              key: `${v.visitorId}-in`,
+              id: v.visitorId,
+              code: v.visitorCode,
+              name: v.name,
+              host: v.personToMeet,
+              dept: v.department,
+              purpose: v.purpose,
+              status: 'CHECKED_IN',
+              time: v.checkinTime,
+              timestamp: dateObj ? dateObj.getTime() : v.visitorId
+            });
+          }
+          if (v.checkoutTime && v.checkoutTime !== 'N/A') {
+            const dateObj = parseCheckinTime(v.checkoutTime);
+            activities.push({
+              key: `${v.visitorId}-out`,
+              id: v.visitorId,
+              code: v.visitorCode,
+              name: v.name,
+              host: v.personToMeet,
+              dept: v.department,
+              purpose: v.purpose,
+              status: 'CHECKED_OUT',
+              time: v.checkoutTime,
+              timestamp: dateObj ? dateObj.getTime() : (v.visitorId + 0.5)
+            });
           }
         });
 
@@ -109,6 +155,7 @@ const Dashboard = () => {
       } finally {
         setLoading(false);
         setLoadingActivities(false);
+        setLoadingCompilations(false);
       }
     };
     fetchStats();
@@ -127,58 +174,128 @@ const Dashboard = () => {
 
       {error && <div className="alert alert-danger">{error}</div>}
 
-      {/* Visitor Overstay Alert Banners */}
-      {overstayingVisitors.length > 0 && (
-        <motion.div 
-          className="alert alert-danger"
-          style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: '12px', 
-            borderLeft: '4px solid #ef4444',
-            background: 'rgba(239, 68, 68, 0.08)',
-            padding: '16px 20px',
-            borderRadius: '12px',
-            marginBottom: '24px'
-          }}
+      {/* Consolidated System Alerts & Notifications Banner */}
+      {(overstayingVisitors.length > 0 || compilationRecords.length > 0) && (
+        <GlowCard 
+          className="alert-glow-card glow-danger"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#ef4444', fontWeight: 'bold' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444', fontWeight: '700', fontSize: '15px' }}>
             <span style={{ fontSize: '18px' }}>⚠️</span>
-            <span>Visitor Overstay Warning</span>
+            <span>System Alerts & Notifications</span>
           </div>
-          <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-light)' }}>
-            The following visitor(s) have been checked in for more than 8 hours. Please check them out:
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
-            {overstayingVisitors.map(v => (
-              <div 
-                key={v.visitorId}
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  background: 'var(--bg-card-solid)',
-                  padding: '10px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-color)',
-                  boxShadow: 'var(--shadow-sm)'
-                }}
-              >
-                <div style={{ fontSize: '13.5px' }}>
-                  <strong style={{ color: 'var(--primary)' }}>{v.visitorCode}</strong> — <strong>{v.name}</strong> 
-                  <span style={{ color: 'var(--text-muted)' }}> (Host: {v.personToMeet} in {v.department})</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '12px', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', padding: '3px 8px', borderRadius: '4px', fontWeight: 'bold' }}>
-                    Inside: {getOverstayHours(v.checkinTime)} hrs
-                  </span>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '4px' }}>
+            {/* 1. Overstay Warning Section */}
+            {overstayingVisitors.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: '700', color: 'var(--text-dark)' }}>
+                  ⏳ Visitor Overstay Alert ({overstayingVisitors.length})
+                </h4>
+                <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-muted)' }}>
+                  The following visitor(s) have been checked in for longer than expected. Please check them out:
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '2px' }}>
+                  {overstayingVisitors.map(v => (
+                    <div 
+                      key={v.visitorId}
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        background: 'var(--bg-card)',
+                        padding: '12px 18px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-color)',
+                        boxShadow: 'var(--shadow-sm)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <strong style={{ color: 'var(--primary)', fontSize: '13.5px' }}>{v.visitorCode}</strong>
+                          <span style={{ fontWeight: '700', color: 'var(--text-dark)', fontSize: '13.5px' }}>{v.name}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                          <span>👤 <strong>Host:</strong> {v.personToMeet} ({v.department})</span>
+                          <span>🏢 <strong>Purpose:</strong> {v.purpose}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '11px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '4px 8px', borderRadius: '4px', fontWeight: '700' }}>
+                          Inside: {getOverstayDurationText(v.checkinTime)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
+
+            {/* Divider line if both are present */}
+            {overstayingVisitors.length > 0 && compilationRecords.length > 0 && (
+              <div style={{ height: '1px', background: 'rgba(239, 68, 68, 0.1)', margin: '4px 0' }}></div>
+            )}
+
+            {/* 2. AI Matches Warning Section */}
+            {compilationRecords.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: '700', color: 'var(--text-dark)' }}>
+                  ✨ Data Integrity Warning: AI Matches Detected ({compilationRecords.length})
+                </h4>
+                <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-muted)' }}>
+                  We detected duplicate visitor records with identical mobile numbers or email addresses:
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '2px' }}>
+                  {compilationRecords.map(v => (
+                    <div 
+                      key={v.visitorId}
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        background: 'var(--bg-card)',
+                        padding: '12px 18px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-color)',
+                        boxShadow: 'var(--shadow-sm)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <strong style={{ color: '#ef4444', fontSize: '13.5px' }}>{v.visitorCode}</strong>
+                          <span style={{ fontWeight: '700', color: 'var(--text-dark)', fontSize: '13.5px' }}>{v.name}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                          {v.mobile && <span>📞 <strong>Mobile:</strong> {formatCleanMobile(v.mobile)}</span>}
+                          {v.email && <span>✉️ <strong>Email:</strong> {v.email}</span>}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', marginTop: '2px' }}>
+                          <span style={{ background: 'rgba(239, 68, 68, 0.08)', color: '#ef4444', padding: '2px 6px', borderRadius: '4px', fontWeight: '600' }}>
+                            {v.matchReason}
+                          </span>
+                          <span style={{ color: 'var(--text-light)' }}>•</span>
+                          <span style={{ color: 'var(--text-muted)' }}>
+                            Matched with: <strong style={{ color: 'var(--text-dark)' }}>{v.matchedWithCode}</strong>
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <button 
+                          className="btn btn-sm btn-primary"
+                          onClick={() => navigate(`/visitors/${v.visitorId}`)}
+                          style={{ padding: '6px 12px', fontSize: '12px', fontWeight: '600' }}
+                        >
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </motion.div>
+        </GlowCard>
       )}
 
       {/* 6 Metric Statistics Cards with Animations */}
@@ -336,7 +453,6 @@ const Dashboard = () => {
           </div>
         )}
       </div>
-
     </div>
   );
 };

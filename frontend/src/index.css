@@ -43,15 +43,14 @@
 /* Light Mode Variables */
 :root,
 .theme-light {
-  --bg-app: #F8FAFC;
+  --bg-app: #FAF9F5; /* Warm Premium Cream */
   --bg-card: #FFFFFF;
   --bg-card-solid: #FFFFFF;
 
-  --primary: #0047FF;
-  /* Premium Industrial Blue */
-  --primary-hover: #0039CC;
-  --primary-light: rgba(0, 71, 255, 0.05);
-  --primary-glow: rgba(0, 71, 255, 0.08);
+  --primary: #F97316; /* Warm Orange Accent */
+  --primary-hover: #EA580C;
+  --primary-light: rgba(249, 115, 22, 0.08);
+  --primary-glow: rgba(249, 115, 22, 0.12);
 
   --accent: #0EA5E9;
   /* Sky 500 */
@@ -65,16 +64,14 @@
   /* Slate 400 */
   --text-inverse: #FFFFFF;
 
-  --border-color: #E2E8F0;
-  /* Slate 200 */
-  --border-soft: #F1F5F9;
-  /* Slate 100 */
-  --border-glow: rgba(0, 71, 255, 0.15);
+  --border-color: #EAE5DB; /* Soft warm border */
+  --border-soft: #F4EFE5; /* Very soft warm border */
+  --border-glow: rgba(249, 115, 22, 0.2);
 
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.02);
-  --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.08);
-  --shadow-glow: 0 0 15px rgba(0, 71, 255, 0.1);
+  --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.03);
+  --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.06);
+  --shadow-glow: 0 0 15px rgba(249, 115, 22, 0.15);
 }
 
 /* Dark Mode Variables */
@@ -202,14 +199,33 @@ a:hover {
 
 .top-header {
   background-color: var(--bg-card);
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1.5px solid var(--border-color);
   height: 72px;
   padding: 0;
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 30px rgba(249, 115, 22, 0.015), 0 1px 3px rgba(0, 0, 0, 0.01);
   transition: background-color var(--transition-theme), border-color var(--transition-theme), box-shadow var(--transition-theme);
+}
+
+
+
+/* Glassmorphism style for top bar in light/dark themes */
+.theme-light .top-header {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1.5px solid rgba(234, 229, 219, 0.7);
+  box-shadow: 0 4px 30px rgba(249, 115, 22, 0.02), 0 1px 3px rgba(0, 0, 0, 0.01);
+}
+
+.theme-dark .top-header {
+  background-color: rgba(17, 24, 39, 0.85) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1.5px solid rgba(30, 41, 59, 0.7);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.25);
 }
 
 .header-inner {
@@ -266,8 +282,7 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 100%;
-  padding: 0 4px;
+  padding: 8px 16px;
   color: var(--text-muted);
   font-weight: 500;
   font-size: 13.5px;
@@ -276,17 +291,20 @@ a:hover {
   position: relative;
   text-decoration: none;
   white-space: nowrap;
-  border-bottom: 2.5px solid transparent;
+  border-radius: 8px;
+  border-bottom: none;
 }
 
 .top-nav-link:hover {
   color: var(--text-dark);
+  background-color: rgba(249, 115, 22, 0.03);
 }
 
 .top-nav-link.active {
   color: var(--primary);
+  background-color: var(--primary-light);
   font-weight: 600;
-  border-bottom: 2.5px solid var(--primary);
+  border-bottom: none;
 }
 
 .top-nav-link .link-icon {
@@ -603,6 +621,72 @@ a:hover {
   --glow-bg: rgba(148, 163, 184, 0.04);
 }
 
+/* Light Mode Color Tints & Glow Enhancements */
+.theme-light .glow-primary {
+  --border-color: rgba(249, 115, 22, 0.1);
+  --bg-card: linear-gradient(135deg, #FFFFFF 65%, rgba(249, 115, 22, 0.02) 100%);
+  --glow-bg: rgba(249, 115, 22, 0.15);
+}
+.theme-light .glow-info {
+  --border-color: rgba(14, 165, 233, 0.08);
+  --bg-card: linear-gradient(135deg, #FFFFFF 65%, rgba(14, 165, 233, 0.02) 100%);
+  --glow-bg: rgba(14, 165, 233, 0.12);
+}
+.theme-light .glow-success {
+  --border-color: rgba(16, 185, 129, 0.08);
+  --bg-card: linear-gradient(135deg, #FFFFFF 65%, rgba(16, 185, 129, 0.02) 100%);
+  --glow-bg: rgba(16, 185, 129, 0.12);
+}
+.theme-light .glow-warning {
+  --border-color: rgba(245, 158, 11, 0.08);
+  --bg-card: linear-gradient(135deg, #FFFFFF 65%, rgba(245, 158, 11, 0.02) 100%);
+  --glow-bg: rgba(245, 158, 11, 0.12);
+}
+.theme-light .glow-danger {
+  --border-color: rgba(239, 68, 68, 0.08);
+  --bg-card: linear-gradient(135deg, #FFFFFF 65%, rgba(239, 68, 68, 0.02) 100%);
+  --glow-bg: rgba(239, 68, 68, 0.12);
+}
+.theme-light .glow-muted {
+  --border-color: rgba(100, 116, 139, 0.08);
+  --bg-card: linear-gradient(135deg, #FFFFFF 65%, rgba(100, 116, 139, 0.02) 100%);
+  --glow-bg: rgba(100, 116, 139, 0.08);
+}
+
+/* Light Theme Card Hover & Glow Shadow Effects */
+.theme-light .glow-primary:hover,
+.theme-light .glow-primary.active-glow {
+  --border-color: rgba(249, 115, 22, 0.35) !important;
+  box-shadow: 0 10px 25px -5px rgba(249, 115, 22, 0.15), 0 8px 16px -6px rgba(249, 115, 22, 0.1), 0 0 12px rgba(249, 115, 22, 0.1) !important;
+}
+.theme-light .glow-info:hover,
+.theme-light .glow-info.active-glow {
+  --border-color: rgba(14, 165, 233, 0.35) !important;
+  box-shadow: 0 10px 25px -5px rgba(14, 165, 233, 0.12), 0 8px 16px -6px rgba(14, 165, 233, 0.08), 0 0 12px rgba(14, 165, 233, 0.08) !important;
+}
+.theme-light .glow-success:hover,
+.theme-light .glow-success.active-glow {
+  --border-color: rgba(16, 185, 129, 0.35) !important;
+  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.12), 0 8px 16px -6px rgba(16, 185, 129, 0.08), 0 0 12px rgba(16, 185, 129, 0.08) !important;
+}
+.theme-light .glow-warning:hover,
+.theme-light .glow-warning.active-glow {
+  --border-color: rgba(245, 158, 11, 0.35) !important;
+  box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.12), 0 8px 16px -6px rgba(245, 158, 11, 0.08), 0 0 12px rgba(245, 158, 11, 0.08) !important;
+}
+.theme-light .glow-danger:hover,
+.theme-light .glow-danger.active-glow {
+  --border-color: rgba(239, 68, 68, 0.35) !important;
+  box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.12), 0 8px 16px -6px rgba(239, 68, 68, 0.08), 0 0 12px rgba(239, 68, 68, 0.08) !important;
+}
+.theme-light .glow-muted:hover,
+.theme-light .glow-muted.active-glow {
+  --border-color: rgba(100, 116, 139, 0.35) !important;
+  box-shadow: 0 10px 25px -5px rgba(100, 116, 139, 0.12), 0 8px 16px -6px rgba(100, 116, 139, 0.08), 0 0 12px rgba(100, 116, 139, 0.08) !important;
+}
+
+
+
 
 .card-empty-state {
   display: flex;
@@ -720,6 +804,22 @@ a:hover {
   align-items: center;
   gap: 16px;
   padding: 20px;
+}
+
+.alert-glow-card.glow-card-container {
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  border-left: 4px solid #ef4444;
+  background: var(--bg-card);
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.05), var(--shadow-sm);
+  margin-bottom: 24px;
+}
+
+.alert-glow-card .glow-card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 16px 20px;
 }
 
 

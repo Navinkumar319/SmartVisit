@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import SystemService from '../services/system.service';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   FileText, 
   Download, 
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 
 const Reports = () => {
+  const navigate = useNavigate();
   const [reportType, setReportType] = useState('history');
   const [reportData, setReportData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -358,7 +360,7 @@ const Reports = () => {
       ) : reportData.length === 0 ? (
         <div className="text-center py-4 card-empty-state content-card">No matching visitor records found for this report scope.</div>
       ) : (
-        <div className="content-card" style={{ padding: '20px' }}>
+        <div className="content-card" style={{ padding: '20px', marginTop: '28px' }}>
           <h3 className="section-title-alt no-print" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '18px' }}>
             <TableProperties size={18} /> Compilation Records ({reportData.length})
           </h3>
@@ -382,6 +384,7 @@ const Reports = () => {
                   )}
                   <th>Visit Date</th>
                   <th>Status</th>
+                  <th className="no-print">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -417,6 +420,15 @@ const Reports = () => {
                     <td>{formatCleanDate(v.visitDate)}</td>
                     <td>
                       <span className={getStatusBadgeClass(v.status)}>{v.status.replace('_', ' ')}</span>
+                    </td>
+                    <td className="no-print">
+                      <button 
+                        className="btn btn-sm btn-primary" 
+                        onClick={() => navigate(`/visitors/${v.visitorId}`)}
+                        style={{ padding: '4px 10px', fontSize: '12px' }}
+                      >
+                        View
+                      </button>
                     </td>
                   </tr>
                 ))}

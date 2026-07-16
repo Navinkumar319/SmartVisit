@@ -52,11 +52,6 @@ public class ReportService {
                 if (i == j) continue;
                 Visitor v2 = all.get(j);
 
-                boolean nameMatches = false;
-                if (v1.getName() != null && v2.getName() != null) {
-                    nameMatches = v1.getName().trim().equalsIgnoreCase(v2.getName().trim());
-                }
-
                 boolean mobileMatches = false;
                 if (v1.getMobile() != null && v2.getMobile() != null) {
                     String m1 = v1.getMobile().replaceAll("[^0-9]", "");
@@ -66,15 +61,24 @@ public class ReportService {
                     }
                 }
 
-                if (nameMatches || mobileMatches) {
+                boolean emailMatches = false;
+                if (v1.getEmail() != null && v2.getEmail() != null) {
+                    String e1 = v1.getEmail().trim();
+                    String e2 = v2.getEmail().trim();
+                    if (!e1.isEmpty() && e1.equalsIgnoreCase(e2)) {
+                        emailMatches = true;
+                    }
+                }
+
+                if (mobileMatches || emailMatches) {
                     isMatch = true;
                     String reason;
-                    if (nameMatches && mobileMatches) {
-                        reason = "Name & Mobile Match";
-                    } else if (nameMatches) {
-                        reason = "Name Match";
-                    } else {
+                    if (mobileMatches && emailMatches) {
+                        reason = "Mobile & Email Match";
+                    } else if (mobileMatches) {
                         reason = "Mobile Match";
+                    } else {
+                        reason = "Email Match";
                     }
 
                     if (reasons.indexOf(reason) == -1) {
