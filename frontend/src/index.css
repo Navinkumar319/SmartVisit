@@ -211,20 +211,16 @@ a:hover {
 
 
 
-/* Glassmorphism style for top bar in light/dark themes */
+/* Solid non-transparent style for top bar in light/dark themes */
 .theme-light .top-header {
-  background-color: rgba(255, 255, 255, 0.85) !important;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1.5px solid rgba(234, 229, 219, 0.7);
+  background-color: var(--bg-card) !important;
+  border-bottom: 1.5px solid var(--border-color);
   box-shadow: 0 4px 30px rgba(249, 115, 22, 0.02), 0 1px 3px rgba(0, 0, 0, 0.01);
 }
 
 .theme-dark .top-header {
-  background-color: rgba(17, 24, 39, 0.85) !important;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1.5px solid rgba(30, 41, 59, 0.7);
+  background-color: var(--bg-card) !important;
+  border-bottom: 1.5px solid var(--border-color);
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.25);
 }
 
