@@ -38,6 +38,10 @@ CREATE TABLE IF NOT EXISTS visitors (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Indexes for performance
+CREATE INDEX idx_visitors_visit_date ON visitors(visit_date);
+CREATE INDEX idx_visitors_status ON visitors(status);
+
 -- 4. Check-Ins Table
 CREATE TABLE IF NOT EXISTS checkins (
     checkin_id INT AUTO_INCREMENT PRIMARY KEY,

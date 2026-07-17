@@ -41,37 +41,70 @@ public class ReportService {
     private List<Visitor> getAiMatchesReport() {
         List<Visitor> all = visitorRepository.findAll();
         List<Visitor> matched = new java.util.ArrayList<>();
+        int n = all.size();
 
-        for (int i = 0; i < all.size(); i++) {
+        String[] cleanedMobiles = new String[n];
+        String[] cleanedEmails = new String[n];
+
+        java.util.Map<String, List<Integer>> mobileToIndices = new java.util.HashMap<>();
+        java.util.Map<String, List<Integer>> emailToIndices = new java.util.HashMap<>();
+
+        for (int i = 0; i < n; i++) {
+            Visitor v = all.get(i);
+
+            String m = v.getMobile();
+            if (m != null) {
+                String cleanedM = m.replaceAll("[^0-9]", "");
+                if (!cleanedM.isEmpty()) {
+                    cleanedMobiles[i] = cleanedM;
+                    mobileToIndices.computeIfAbsent(cleanedM, k -> new java.util.ArrayList<>()).add(i);
+                }
+            }
+
+            String e = v.getEmail();
+            if (e != null) {
+                String cleanedE = e.trim().toLowerCase();
+                if (!cleanedE.isEmpty()) {
+                    cleanedEmails[i] = cleanedE;
+                    emailToIndices.computeIfAbsent(cleanedE, k -> new java.util.ArrayList<>()).add(i);
+                }
+            }
+        }
+
+        for (int i = 0; i < n; i++) {
             Visitor v1 = all.get(i);
             boolean isMatch = false;
             StringBuilder reasons = new StringBuilder();
             StringBuilder withCodes = new StringBuilder();
 
-            for (int j = 0; j < all.size(); j++) {
-                if (i == j) continue;
-                Visitor v2 = all.get(j);
+            java.util.Set<Integer> matchingIndices = new java.util.LinkedHashSet<>();
 
-                boolean mobileMatches = false;
-                if (v1.getMobile() != null && v2.getMobile() != null) {
-                    String m1 = v1.getMobile().replaceAll("[^0-9]", "");
-                    String m2 = v2.getMobile().replaceAll("[^0-9]", "");
-                    if (!m1.isEmpty() && m1.equals(m2)) {
-                        mobileMatches = true;
-                    }
+            String myMobile = cleanedMobiles[i];
+            if (myMobile != null) {
+                List<Integer> sameMobile = mobileToIndices.get(myMobile);
+                if (sameMobile != null) {
+                    matchingIndices.addAll(sameMobile);
                 }
+            }
 
-                boolean emailMatches = false;
-                if (v1.getEmail() != null && v2.getEmail() != null) {
-                    String e1 = v1.getEmail().trim();
-                    String e2 = v2.getEmail().trim();
-                    if (!e1.isEmpty() && e1.equalsIgnoreCase(e2)) {
-                        emailMatches = true;
-                    }
+            String myEmail = cleanedEmails[i];
+            if (myEmail != null) {
+                List<Integer> sameEmail = emailToIndices.get(myEmail);
+                if (sameEmail != null) {
+                    matchingIndices.addAll(sameEmail);
                 }
+            }
 
-                if (mobileMatches || emailMatches) {
-                    isMatch = true;
+            matchingIndices.remove(i);
+
+            if (!matchingIndices.isEmpty()) {
+                isMatch = true;
+                for (int idx : matchingIndices) {
+                    Visitor v2 = all.get(idx);
+
+                    boolean mobileMatches = (myMobile != null && myMobile.equals(cleanedMobiles[idx]));
+                    boolean emailMatches = (myEmail != null && myEmail.equals(cleanedEmails[idx]));
+
                     String reason;
                     if (mobileMatches && emailMatches) {
                         reason = "Mobile & Email Match";

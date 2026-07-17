@@ -357,11 +357,66 @@ public class VisitorService {
         return visitor;
     }
 
+    private List<Visitor> populateCheckTimesBatch(List<Visitor> visitors) {
+        if (visitors == null || visitors.isEmpty()) return visitors;
+
+        List<Integer> visitorIds = visitors.stream().map(Visitor::getVisitorId).collect(Collectors.toList());
+
+        List<CheckIn> allCheckIns = checkInRepository.findByVisitorVisitorIdInOrderByCheckinTimeDesc(visitorIds);
+        List<CheckOut> allCheckOuts = checkOutRepository.findByVisitorVisitorIdInOrderByCheckoutTimeDesc(visitorIds);
+        List<Department> allDepts = departmentRepository.findAll();
+
+        java.util.Map<Integer, CheckIn> latestCheckInMap = new java.util.HashMap<>();
+        for (CheckIn ci : allCheckIns) {
+            if (ci.getVisitor() != null && ci.getVisitor().getVisitorId() != null) {
+                latestCheckInMap.putIfAbsent(ci.getVisitor().getVisitorId(), ci);
+            }
+        }
+
+        java.util.Map<Integer, CheckOut> latestCheckOutMap = new java.util.HashMap<>();
+        for (CheckOut co : allCheckOuts) {
+            if (co.getVisitor() != null && co.getVisitor().getVisitorId() != null) {
+                latestCheckOutMap.putIfAbsent(co.getVisitor().getVisitorId(), co);
+            }
+        }
+
+        java.util.Map<String, Department> deptMap = new java.util.HashMap<>();
+        for (Department dept : allDepts) {
+            if (dept.getName() != null) {
+                deptMap.put(dept.getName().trim().toLowerCase(), dept);
+            }
+        }
+
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss a");
+
+        for (Visitor visitor : visitors) {
+            CheckIn checkin = latestCheckInMap.get(visitor.getVisitorId());
+            if (checkin != null) {
+                visitor.setCheckinTime(checkin.getCheckinTime().format(formatter));
+                visitor.setCheckinBy(checkin.getSecurityName());
+            }
+
+            CheckOut checkout = latestCheckOutMap.get(visitor.getVisitorId());
+            if (checkout != null) {
+                visitor.setCheckoutTime(checkout.getCheckoutTime().format(formatter));
+                visitor.setCheckoutBy(checkout.getSecurityName());
+            }
+
+            if (visitor.getDepartment() != null) {
+                Department dept = deptMap.get(visitor.getDepartment().trim().toLowerCase());
+                if (dept != null) {
+                    visitor.setFloor(dept.getFloor());
+                    visitor.setRoomNo(dept.getRoomNo());
+                }
+            }
+        }
+
+        return visitors;
+    }
+
     // 9. Fetch and Sanitize List/Details for Security Role
     public List<Visitor> getAllVisitors() {
-        return visitorRepository.findAll().stream()
-                .map(this::populateCheckTimes)
-                .collect(Collectors.toList());
+        return populateCheckTimesBatch(visitorRepository.findAll());
     }
 
     public Optional<Visitor> getVisitorById(Integer id) {
@@ -369,15 +424,11 @@ public class VisitorService {
     }
 
     public List<Visitor> searchVisitors(String query) {
-        return visitorRepository.searchVisitors(query).stream()
-                .map(this::populateCheckTimes)
-                .collect(Collectors.toList());
+        return populateCheckTimesBatch(visitorRepository.searchVisitors(query));
     }
 
     public List<Visitor> filterVisitorsByStatus(String status) {
-        return visitorRepository.findByStatus(status).stream()
-                .map(this::populateCheckTimes)
-                .collect(Collectors.toList());
+        return populateCheckTimesBatch(visitorRepository.findByStatus(status));
     }
 
     // 10. Find matching visitor using AI Face Similarity
